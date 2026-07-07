@@ -331,7 +331,7 @@ export default function Dashboard() {
                   <div
                     className={cn(
                       "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                      a.type === "booking" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"
+                      a.type === "booking" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600"
                     )}
                   >
                     {a.type === "booking" ? <ClipboardList className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
@@ -372,7 +372,7 @@ export default function Dashboard() {
             <p className="text-sm font-medium text-slate-600">Current Guests</p>
             <p className="text-xl font-semibold text-slate-900">{statusCounts.checked_in}</p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600">
             <Users className="h-5 w-5" />
           </div>
         </Card>
@@ -406,7 +406,7 @@ function ScheduleRow({
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-          tone === "green" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+          tone === "green" ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"
         )}
       >
         {tone === "green" ? <LogIn className="h-4 w-4" /> : <LogOut className="h-4 w-4" />}
@@ -433,7 +433,7 @@ function QuickAction({
 }) {
   const toneClasses: Record<string, string> = {
     blue: "bg-blue-50 text-blue-600 hover:bg-blue-100",
-    green: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100",
+    green: "bg-green-50 text-green-600 hover:bg-green-100",
     amber: "bg-amber-50 text-amber-600 hover:bg-amber-100",
     brand: "bg-brand-50 text-brand-600 hover:bg-brand-100",
   };

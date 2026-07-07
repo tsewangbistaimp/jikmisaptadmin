@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Menu, Search, Bell, PlusCircle } from "lucide-react";
+import { Search, Bell, PlusCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
@@ -15,7 +15,7 @@ function useGreeting() {
   }, []);
 }
 
-export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
+export function Topbar() {
   const { profile } = useAuth();
   const greeting = useGreeting();
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -35,12 +35,6 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
     <>
       <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:flex-row md:items-center md:gap-4 md:px-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={onMenuClick}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-slate-900 sm:text-lg">
               {greeting}, {firstName} <span className="align-middle">👋</span>
@@ -52,7 +46,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         <div className="flex flex-1 items-center gap-2 md:justify-end">
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400 hover:bg-slate-100 md:max-w-xs"
+            className="flex min-h-12 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 hover:bg-slate-100 md:min-h-10 md:max-w-xs"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="hidden truncate sm:inline">Search anything…</span>
@@ -64,7 +58,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
 
           <button
             title={pendingCount > 0 ? `${pendingCount} bookings with pending balance` : "No pending balances"}
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 md:h-10 md:w-10"
           >
             <Bell className="h-4 w-4" />
             {pendingCount > 0 && (

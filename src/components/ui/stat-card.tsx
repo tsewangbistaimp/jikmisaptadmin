@@ -18,7 +18,7 @@ export function StatCard({
   const toneClasses: Record<string, string> = {
     slate: "bg-slate-100 text-slate-600",
     brand: "bg-brand-100 text-brand-600",
-    green: "bg-emerald-100 text-emerald-600",
+    green: "bg-green-100 text-green-600",
     amber: "bg-amber-100 text-amber-600",
     red: "bg-red-100 text-red-600",
   };

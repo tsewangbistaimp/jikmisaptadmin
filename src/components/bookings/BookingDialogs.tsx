@@ -322,7 +322,7 @@ export function CheckoutDialog({
             )}
           </>
         ) : (
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">Fully paid — no balance due.</p>
+          <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">Fully paid — no balance due.</p>
         )}
 
         <div className="flex justify-end gap-2 pt-2">

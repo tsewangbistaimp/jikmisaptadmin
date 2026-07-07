@@ -11,7 +11,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         ref={ref}
         className={cn(
-          "flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 md:h-10",
           error && "border-red-300 focus:ring-red-300 focus:border-red-400",
           className
         )}
@@ -62,7 +62,7 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 md:h-10",
         error && "border-red-300 focus:ring-red-300 focus:border-red-400",
         className
       )}
