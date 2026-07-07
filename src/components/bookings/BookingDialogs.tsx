@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { paymentStatusTone, bookingStatusTone } from "@/lib/badge-tones";
-import type { BookingWithRelations, PaymentMethod, Transaction } from "@/lib/database.types";
+import type { BookingService, BookingWithRelations, PaymentMethod, Transaction } from "@/lib/database.types";
 
 // ---------------------------------------------------------------------------
 // View booking details + payment history
@@ -23,6 +23,7 @@ export function BookingDetailDialog({
   onClose: () => void;
 }) {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [addOns, setAddOns] = React.useState<BookingService[]>([]);
 
   React.useEffect(() => {
     if (!booking) return;
@@ -32,6 +33,11 @@ export function BookingDetailDialog({
       .eq("booking_id", booking.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => setTransactions((data as Transaction[]) ?? []));
+    supabase
+      .from("booking_services")
+      .select("*")
+      .eq("booking_id", booking.id)
+      .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
   }, [booking]);
 
   if (!booking) return null;
@@ -67,6 +73,22 @@ export function BookingDetailDialog({
           <div>
             <p className="text-xs font-medium uppercase text-slate-400">Notes</p>
             <p className="mt-1 text-sm text-slate-700">{booking.notes}</p>
+          </div>
+        )}
+
+        {addOns.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase text-slate-400">Services & Add-ons</p>
+            <ul className="space-y-1.5">
+              {addOns.map((a) => (
+                <li key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                  <span className="text-slate-700">
+                    {a.name} {a.quantity > 1 ? `× ${a.quantity}` : ""}
+                  </span>
+                  <span className="font-medium text-slate-900">{formatCurrency(a.unit_price * a.quantity)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

@@ -6,6 +6,7 @@ import NewBooking from "@/pages/NewBooking";
 import Bookings from "@/pages/Bookings";
 import Guests from "@/pages/Guests";
 import Rooms from "@/pages/Rooms";
+import Services from "@/pages/Services";
 import Transactions from "@/pages/Transactions";
 import UsersSettings from "@/pages/settings/Users";
 import NotFound from "@/pages/NotFound";
@@ -21,6 +22,7 @@ function App() {
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/guests" element={<Guests />} />
         <Route path="/rooms" element={<Rooms />} />
+        <Route path="/services" element={<Services />} />
         <Route path="/transactions" element={<Transactions />} />
 
         <Route element={<AdminRoute />}>

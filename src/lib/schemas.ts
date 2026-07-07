@@ -29,10 +29,8 @@ export const bookingFormSchema = z
     message: "Check-out must be after check-in",
     path: ["check_out"],
   })
-  .refine((data) => data.advance_paid <= data.total_amount, {
-    message: "Advance paid can't exceed the total amount",
-    path: ["advance_paid"],
-  })
+  // Note: advance_paid vs. grand total (room + add-ons) is validated in
+  // NewBooking.tsx's onSubmit, since add-ons live outside this form schema.
   .refine((data) => data.advance_paid <= 0 || !!data.payment_method, {
     message: "Select a payment method",
     path: ["payment_method"],

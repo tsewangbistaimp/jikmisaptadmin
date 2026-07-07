@@ -3,7 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { UserCheck } from "lucide-react";
+import { UserCheck, Sparkles, Minus, Plus, X, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input, Label, Textarea, Select, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,14 +12,21 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { bookingFormSchema, type BookingFormValues } from "@/lib/schemas";
 import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
-import { formatCurrency, nightsBetween, todayISO } from "@/lib/utils";
+import { formatCurrency, nightsBetween, todayISO, cn } from "@/lib/utils";
 import { paymentStatusTone } from "@/lib/badge-tones";
-import type { Guest, Room } from "@/lib/database.types";
+import type { Guest, Room, Service } from "@/lib/database.types";
 
 export default function NewBooking() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [rooms, setRooms] = React.useState<Room[]>([]);
+  const [services, setServices] = React.useState<Service[]>([]);
+  const [addOnQty, setAddOnQty] = React.useState<Record<string, number>>({});
+  const [customItems, setCustomItems] = React.useState<{ id: string; name: string; price: number; quantity: number }[]>([]);
+  const [addingCustom, setAddingCustom] = React.useState(false);
+  const [customName, setCustomName] = React.useState("");
+  const [customPrice, setCustomPrice] = React.useState("");
+  const [customQty, setCustomQty] = React.useState("1");
   const [matchingGuest, setMatchingGuest] = React.useState<Guest | null>(null);
   const [usingExistingGuest, setUsingExistingGuest] = React.useState(false);
 
@@ -48,6 +55,12 @@ export default function NewBooking() {
       .select("*")
       .order("room_number")
       .then(({ data }) => setRooms((data as Room[]) ?? []));
+    supabase
+      .from("services")
+      .select("*")
+      .eq("status", "active")
+      .order("name")
+      .then(({ data }) => setServices((data as Service[]) ?? []));
   }, []);
 
   const phone = watch("phone");
@@ -58,8 +71,39 @@ export default function NewBooking() {
   const advancePaid = Number(watch("advance_paid")) || 0;
 
   const nights = nightsBetween(checkIn, checkOut);
-  const remaining = Math.max(totalAmount - advancePaid, 0);
-  const paymentStatus = advancePaid <= 0 ? "unpaid" : advancePaid >= totalAmount && totalAmount > 0 ? "paid" : "partial";
+  const servicesTotal = services.reduce((sum, s) => sum + s.price * (addOnQty[s.id] ?? 0), 0);
+  const customTotal = customItems.reduce((sum, c) => sum + c.price * c.quantity, 0);
+  const addOnsTotal = servicesTotal + customTotal;
+  const grandTotal = totalAmount + addOnsTotal;
+  const remaining = Math.max(grandTotal - advancePaid, 0);
+  const paymentStatus = advancePaid <= 0 ? "unpaid" : advancePaid >= grandTotal && grandTotal > 0 ? "paid" : "partial";
+
+  const setQty = (serviceId: string, qty: number) => {
+    setAddOnQty((prev) => ({ ...prev, [serviceId]: Math.max(0, qty) }));
+  };
+
+  const addCustomItem = () => {
+    const name = customName.trim();
+    const price = Number(customPrice);
+    const qty = Math.max(1, Math.floor(Number(customQty)) || 1);
+    if (!name) {
+      toast.error("Enter a name for the item");
+      return;
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error("Enter a valid price");
+      return;
+    }
+    setCustomItems((prev) => [...prev, { id: crypto.randomUUID(), name, price, quantity: qty }]);
+    setCustomName("");
+    setCustomPrice("");
+    setCustomQty("1");
+    setAddingCustom(false);
+  };
+
+  const removeCustomItem = (id: string) => {
+    setCustomItems((prev) => prev.filter((c) => c.id !== id));
+  };
 
   // Look up existing guest by phone as the receptionist types
   React.useEffect(() => {
@@ -93,6 +137,10 @@ export default function NewBooking() {
   };
 
   const onSubmit = async (values: BookingFormValues) => {
+    if (values.advance_paid > grandTotal) {
+      toast.error("Advance paid can't exceed the total amount (room + add-ons)");
+      return;
+    }
     try {
       // 1. Reuse or create guest
       let guestId = usingExistingGuest && matchingGuest ? matchingGuest.id : null;
@@ -142,7 +190,7 @@ export default function NewBooking() {
           guest_count: values.guest_count,
           check_in: values.check_in,
           check_out: values.check_out,
-          total_amount: values.total_amount,
+          total_amount: grandTotal,
           advance_paid: values.advance_paid,
           booking_source: values.booking_source,
           payment_method: values.payment_method || null,
@@ -160,7 +208,31 @@ export default function NewBooking() {
         throw bookingError;
       }
 
-      // 3. Record initial payment as a transaction
+      // 3. Attach any selected add-on services + manually added custom items
+      const selectedAddOns = [
+        ...services
+          .filter((s) => (addOnQty[s.id] ?? 0) > 0)
+          .map((s) => ({
+            booking_id: booking.id,
+            service_id: s.id,
+            name: s.name,
+            unit_price: s.price,
+            quantity: addOnQty[s.id],
+          })),
+        ...customItems.map((c) => ({
+          booking_id: booking.id,
+          service_id: null,
+          name: c.name,
+          unit_price: c.price,
+          quantity: c.quantity,
+        })),
+      ];
+      if (selectedAddOns.length > 0) {
+        const { error: addOnError } = await supabase.from("booking_services").insert(selectedAddOns);
+        if (addOnError) throw addOnError;
+      }
+
+      // 4. Record initial payment as a transaction
       if (values.advance_paid > 0 && values.payment_method) {
         const { error: txError } = await supabase.from("transactions").insert({
           booking_id: booking.id,
@@ -174,11 +246,13 @@ export default function NewBooking() {
         if (txError) throw txError;
       }
 
-      // 4. Mark room occupied
+      // 5. Mark room occupied
       await supabase.from("rooms").update({ status: "occupied" }).eq("id", values.room_id);
 
       toast.success(`Booking ${booking.booking_number} saved`);
       reset();
+      setAddOnQty({});
+      setCustomItems([]);
       navigate("/bookings");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save booking");
@@ -294,12 +368,132 @@ export default function NewBooking() {
 
         <Card>
           <CardHeader>
+            <CardTitle>Services & Add-ons</CardTitle>
+            <CardDescription>Laundry, breakfast, and other extras — optional.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {services.map((s) => {
+              const qty = addOnQty[s.id] ?? 0;
+              return (
+                <div
+                  key={s.id}
+                  className={cn(
+                    "flex items-center justify-between rounded-xl border px-3 py-2.5 transition-colors",
+                    qty > 0 ? "border-brand-200 bg-brand-50" : "border-slate-200"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className={cn("h-4 w-4", qty > 0 ? "text-brand-500" : "text-slate-300")} />
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{s.name}</p>
+                      <p className="text-xs text-slate-400">{formatCurrency(s.price)} each</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQty(s.id, qty - 1)}
+                      disabled={qty === 0}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-5 text-center text-sm font-medium text-slate-700">{qty}</span>
+                    <button
+                      type="button"
+                      onClick={() => setQty(s.id, qty + 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {customItems.map((c) => (
+              <div key={c.id} className="flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-brand-500" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">
+                      {c.name} {c.quantity > 1 ? `× ${c.quantity}` : ""}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {formatCurrency(c.price)} each · custom item
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-700">{formatCurrency(c.price * c.quantity)}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeCustomItem(c.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {addingCustom ? (
+              <div className="space-y-2 rounded-xl border border-dashed border-slate-300 p-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_auto_auto]">
+                  <Input
+                    placeholder="Item name (e.g. Extra towel)"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    className="sm:col-span-1 col-span-2"
+                    autoFocus
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Price"
+                    value={customPrice}
+                    onChange={(e) => setCustomPrice(e.target.value)}
+                    className="sm:w-28"
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Qty"
+                    value={customQty}
+                    onChange={(e) => setCustomQty(e.target.value)}
+                    className="sm:w-20"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setAddingCustom(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="button" size="sm" onClick={addCustomItem}>
+                    Add Item
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAddingCustom(true)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Add custom item
+              </button>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Payment Information</CardTitle>
             <CardDescription>Balance and payment status are calculated automatically.</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="total_amount">Total Amount</Label>
+              <Label htmlFor="total_amount">Room Total</Label>
               <Input id="total_amount" type="number" min={0} step="0.01" {...register("total_amount", { valueAsNumber: true })} error={errors.total_amount?.message} />
               <FieldError message={errors.total_amount?.message} />
             </div>
@@ -337,9 +531,27 @@ export default function NewBooking() {
               </div>
             </div>
 
-            <div className="sm:col-span-2 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-              <span className="text-sm font-medium text-slate-600">Remaining Balance</span>
-              <span className="text-lg font-semibold text-slate-900">{formatCurrency(remaining)}</span>
+            <div className="sm:col-span-2 space-y-1.5 rounded-xl bg-slate-50 px-4 py-3">
+              {addOnsTotal > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-sm text-slate-500">
+                    <span>Room Total</span>
+                    <span>{formatCurrency(totalAmount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-slate-500">
+                    <span>Add-ons</span>
+                    <span>{formatCurrency(addOnsTotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm font-medium text-slate-700 border-t border-slate-200 pt-1.5">
+                    <span>Grand Total</span>
+                    <span>{formatCurrency(grandTotal)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-sm font-medium text-slate-600">Remaining Balance</span>
+                <span className="text-lg font-semibold text-slate-900">{formatCurrency(remaining)}</span>
+              </div>
             </div>
           </CardContent>
         </Card>

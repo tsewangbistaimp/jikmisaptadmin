@@ -77,6 +77,26 @@ export interface Transaction {
   created_at: string;
 }
 
+export type ServiceStatus = "active" | "inactive";
+
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+  status: ServiceStatus;
+  created_at: string;
+}
+
+export interface BookingService {
+  id: string;
+  booking_id: string;
+  service_id: string | null;
+  name: string;
+  unit_price: number;
+  quantity: number;
+  created_at: string;
+}
+
 export interface BookingWithRelations extends Booking {
   guest: Guest;
   room: Room;

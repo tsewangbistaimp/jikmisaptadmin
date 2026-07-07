@@ -15,10 +15,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMobileOpen(false)} />
-          <div className="relative z-10 h-full w-64 bg-white shadow-xl">
+          <div className="relative z-10 h-full w-64 shadow-xl">
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+              className="absolute right-3 top-4 rounded-lg p-1.5 text-slate-300 hover:bg-white/10"
             >
               <X className="h-4 w-4" />
             </button>
