@@ -60,60 +60,108 @@ export default function UsersSettings() {
           ) : staff.length === 0 ? (
             <EmptyState title="No staff accounts" description="Create receptionist accounts to give your team access." />
           ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Name</TH>
-                  <TH>Username</TH>
-                  <TH>Role</TH>
-                  <TH>Status</TH>
-                  <TH className="text-right">Action</TH>
-                </TR>
-              </THead>
-              <TBody>
+            <>
+              <div className="hidden md:block">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Name</TH>
+                      <TH>Username</TH>
+                      <TH>Role</TH>
+                      <TH>Status</TH>
+                      <TH className="text-right">Action</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {staff.map((s) => (
+                      <TR key={s.id}>
+                        <TD className="font-medium text-slate-900 dark:text-slate-100">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+                              {initials(s.full_name)}
+                            </div>
+                            {s.full_name}
+                            {s.id === currentUser?.id && <span className="text-xs text-slate-400 dark:text-slate-500">(you)</span>}
+                          </div>
+                        </TD>
+                        <TD>{s.username}</TD>
+                        <TD>
+                          <Badge tone={s.role === "admin" ? "violet" : "slate"} className="capitalize">
+                            {s.role}
+                          </Badge>
+                        </TD>
+                        <TD>
+                          <Badge tone={s.status === "active" ? "green" : "red"} className="capitalize">
+                            {s.status}
+                          </Badge>
+                        </TD>
+                        <TD>
+                          <div className="flex justify-end gap-1">
+                            <IconButton title="Reset password" onClick={() => setResetting(s)}>
+                              <KeyRound className="h-4 w-4" />
+                            </IconButton>
+                            {s.id !== currentUser?.id && (
+                              <>
+                                <IconButton title={s.status === "active" ? "Disable" : "Enable"} onClick={() => setStatusTarget(s)}>
+                                  {s.status === "active" ? <Ban className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                                </IconButton>
+                                <IconButton title="Delete" destructive onClick={() => setDeleting(s)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </IconButton>
+                              </>
+                            )}
+                          </div>
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
                 {staff.map((s) => (
-                  <TR key={s.id}>
-                    <TD className="font-medium text-slate-900 dark:text-slate-100">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
-                          {initials(s.full_name)}
-                        </div>
-                        {s.full_name}
-                        {s.id === currentUser?.id && <span className="text-xs text-slate-400 dark:text-slate-500">(you)</span>}
+                  <div key={s.id} className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
+                        {initials(s.full_name)}
                       </div>
-                    </TD>
-                    <TD>{s.username}</TD>
-                    <TD>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-900 dark:text-slate-100">
+                          {s.full_name}
+                          {s.id === currentUser?.id && <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">(you)</span>}
+                        </p>
+                        <p className="truncate text-sm text-slate-500 dark:text-slate-400">{s.username}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Badge tone={s.role === "admin" ? "violet" : "slate"} className="capitalize">
                         {s.role}
                       </Badge>
-                    </TD>
-                    <TD>
                       <Badge tone={s.status === "active" ? "green" : "red"} className="capitalize">
                         {s.status}
                       </Badge>
-                    </TD>
-                    <TD>
-                      <div className="flex justify-end gap-1">
-                        <IconButton title="Reset password" onClick={() => setResetting(s)}>
-                          <KeyRound className="h-4 w-4" />
-                        </IconButton>
-                        {s.id !== currentUser?.id && (
-                          <>
-                            <IconButton title={s.status === "active" ? "Disable" : "Enable"} onClick={() => setStatusTarget(s)}>
-                              {s.status === "active" ? <Ban className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                            </IconButton>
-                            <IconButton title="Delete" destructive onClick={() => setDeleting(s)}>
-                              <Trash2 className="h-4 w-4" />
-                            </IconButton>
-                          </>
-                        )}
-                      </div>
-                    </TD>
-                  </TR>
+                    </div>
+
+                    <div className="mt-3 flex justify-end gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
+                      <IconButton title="Reset password" onClick={() => setResetting(s)}>
+                        <KeyRound className="h-4 w-4" />
+                      </IconButton>
+                      {s.id !== currentUser?.id && (
+                        <>
+                          <IconButton title={s.status === "active" ? "Disable" : "Enable"} onClick={() => setStatusTarget(s)}>
+                            {s.status === "active" ? <Ban className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                          </IconButton>
+                          <IconButton title="Delete" destructive onClick={() => setDeleting(s)}>
+                            <Trash2 className="h-4 w-4" />
+                          </IconButton>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </TBody>
-            </Table>
+              </div>
+            </>
           )}
         </div>
       </Card>
@@ -141,7 +189,8 @@ function IconButton({
     <button
       title={title}
       onClick={onClick}
-      className={`rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 ${destructive ? "text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10" : "text-slate-500 dark:text-slate-400"}`}
+      aria-label={title}
+      className={`flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 md:h-8 md:w-8 dark:hover:bg-slate-800 ${destructive ? "text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10" : "text-slate-500 dark:text-slate-400"}`}
     >
       {children}
     </button>

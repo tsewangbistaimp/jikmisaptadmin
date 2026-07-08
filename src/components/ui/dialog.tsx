@@ -44,7 +44,8 @@ export function Dialog({ open, onClose, title, description, children, className 
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            aria-label="Close dialog"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 md:h-8 md:w-8 dark:hover:bg-slate-800 dark:hover:text-slate-300"
           >
             <X className="h-4 w-4" />
           </button>

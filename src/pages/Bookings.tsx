@@ -368,7 +368,8 @@ function IconButton({
     <button
       title={title}
       onClick={onClick}
-      className={`rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 ${destructive ? "text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10" : "text-slate-500 dark:text-slate-400"}`}
+      aria-label={title}
+      className={`flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 md:h-8 md:w-8 dark:hover:bg-slate-800 ${destructive ? "text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10" : "text-slate-500 dark:text-slate-400"}`}
     >
       {children}
     </button>

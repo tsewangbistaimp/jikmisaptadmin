@@ -69,35 +69,63 @@ export default function Guests() {
         ) : filtered.length === 0 ? (
           <EmptyState title="No guests found" description="Guests are created automatically from new bookings." />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Guest</TH>
-                <TH>Phone</TH>
-                <TH>Nationality</TH>
-                <TH>Passport / ID</TH>
-                <TH>Guests</TH>
-              </TR>
-            </THead>
-            <TBody>
+          <>
+            <div className="hidden md:block">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Guest</TH>
+                    <TH>Phone</TH>
+                    <TH>Nationality</TH>
+                    <TH>Passport / ID</TH>
+                    <TH>Guests</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {filtered.map((g) => (
+                    <TR key={g.id} className="cursor-pointer" onClick={() => setSelected(g)}>
+                      <TD className="font-medium text-slate-900 dark:text-slate-100">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+                            {initials(g.full_name)}
+                          </div>
+                          {g.full_name}
+                        </div>
+                      </TD>
+                      <TD>{g.phone ?? "—"}</TD>
+                      <TD>{g.nationality ?? "—"}</TD>
+                      <TD>{g.passport_number ?? "—"}</TD>
+                      <TD>{g.guest_count}</TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
               {filtered.map((g) => (
-                <TR key={g.id} className="cursor-pointer" onClick={() => setSelected(g)}>
-                  <TD className="font-medium text-slate-900 dark:text-slate-100">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
-                        {initials(g.full_name)}
-                      </div>
-                      {g.full_name}
-                    </div>
-                  </TD>
-                  <TD>{g.phone ?? "—"}</TD>
-                  <TD>{g.nationality ?? "—"}</TD>
-                  <TD>{g.passport_number ?? "—"}</TD>
-                  <TD>{g.guest_count}</TD>
-                </TR>
+                <button
+                  key={g.id}
+                  onClick={() => setSelected(g)}
+                  className="flex w-full items-center gap-3 p-4 text-left active:bg-slate-50 dark:active:bg-slate-800/60"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
+                    {initials(g.full_name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-slate-900 dark:text-slate-100">{g.full_name}</p>
+                    <p className="truncate text-sm text-slate-500 dark:text-slate-400">{g.phone ?? "—"}</p>
+                    <p className="truncate text-xs text-slate-400 dark:text-slate-500">
+                      {g.nationality ?? "—"} · {g.passport_number ?? "No ID"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right text-sm text-slate-500 dark:text-slate-400">
+                    {g.guest_count} <span className="text-xs">guest{g.guest_count === 1 ? "" : "s"}</span>
+                  </div>
+                </button>
               ))}
-            </TBody>
-          </Table>
+            </div>
+          </>
         )}
       </Card>
 

@@ -394,7 +394,8 @@ export default function NewBooking() {
                       type="button"
                       onClick={() => setQty(s.id, qty - 1)}
                       disabled={qty === 0}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+                      aria-label="Decrease quantity"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 md:h-7 md:w-7 dark:hover:bg-slate-800 disabled:opacity-30"
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
@@ -402,7 +403,8 @@ export default function NewBooking() {
                     <button
                       type="button"
                       onClick={() => setQty(s.id, qty + 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      aria-label="Increase quantity"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 md:h-7 md:w-7 dark:hover:bg-slate-800"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
@@ -429,7 +431,8 @@ export default function NewBooking() {
                   <button
                     type="button"
                     onClick={() => removeCustomItem(c.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:bg-red-500/10 hover:text-red-500 dark:text-red-400"
+                    aria-label="Remove item"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-50 md:h-7 md:w-7 dark:bg-red-500/10 hover:text-red-500 dark:text-red-400"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>

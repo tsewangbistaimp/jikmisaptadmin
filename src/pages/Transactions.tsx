@@ -131,32 +131,56 @@ export default function Transactions() {
         ) : filtered.length === 0 ? (
           <EmptyState title="No transactions found" description="Payments recorded on bookings will appear here." />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Booking</TH>
-                <TH>Guest</TH>
-                <TH>Amount</TH>
-                <TH>Method</TH>
-                <TH>Type</TH>
-                <TH>Date</TH>
-                <TH>Notes</TH>
-              </TR>
-            </THead>
-            <TBody>
+          <>
+            <div className="hidden md:block">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Booking</TH>
+                    <TH>Guest</TH>
+                    <TH>Amount</TH>
+                    <TH>Method</TH>
+                    <TH>Type</TH>
+                    <TH>Date</TH>
+                    <TH>Notes</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {filtered.map((t) => (
+                    <TR key={t.id}>
+                      <TD className="font-medium text-slate-900 dark:text-slate-100">{t.booking?.booking_number ?? "—"}</TD>
+                      <TD>{t.guest?.full_name ?? "—"}</TD>
+                      <TD className="font-semibold">{formatCurrency(t.amount)}</TD>
+                      <TD>{PAYMENT_METHOD_LABELS[t.payment_method]}</TD>
+                      <TD className="capitalize">{t.transaction_type}</TD>
+                      <TD>{formatDateTime(t.created_at)}</TD>
+                      <TD className="max-w-[200px] truncate">{t.notes ?? "—"}</TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
               {filtered.map((t) => (
-                <TR key={t.id}>
-                  <TD className="font-medium text-slate-900 dark:text-slate-100">{t.booking?.booking_number ?? "—"}</TD>
-                  <TD>{t.guest?.full_name ?? "—"}</TD>
-                  <TD className="font-semibold">{formatCurrency(t.amount)}</TD>
-                  <TD>{PAYMENT_METHOD_LABELS[t.payment_method]}</TD>
-                  <TD className="capitalize">{t.transaction_type}</TD>
-                  <TD>{formatDateTime(t.created_at)}</TD>
-                  <TD className="max-w-[200px] truncate">{t.notes ?? "—"}</TD>
-                </TR>
+                <div key={t.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900 dark:text-slate-100">{t.booking?.booking_number ?? "—"}</p>
+                      <p className="truncate text-sm text-slate-600 dark:text-slate-400">{t.guest?.full_name ?? "—"}</p>
+                    </div>
+                    <p className="shrink-0 font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(t.amount)}</p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                    <span>{PAYMENT_METHOD_LABELS[t.payment_method]}</span>
+                    <span className="capitalize">{t.transaction_type}</span>
+                    <span>{formatDateTime(t.created_at)}</span>
+                  </div>
+                  {t.notes && <p className="mt-1 truncate text-xs text-slate-400 dark:text-slate-500">{t.notes}</p>}
+                </div>
               ))}
-            </TBody>
-          </Table>
+            </div>
+          </>
         )}
       </Card>
     </div>

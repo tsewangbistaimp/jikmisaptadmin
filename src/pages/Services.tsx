@@ -65,49 +65,87 @@ export default function Services() {
             icon={<Sparkles className="h-5 w-5" />}
           />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Name</TH>
-                <TH>Price</TH>
-                <TH>Status</TH>
-                {isAdmin && <TH className="text-right">Actions</TH>}
-              </TR>
-            </THead>
-            <TBody>
+          <>
+            <div className="hidden md:block">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Name</TH>
+                    <TH>Price</TH>
+                    <TH>Status</TH>
+                    {isAdmin && <TH className="text-right">Actions</TH>}
+                  </TR>
+                </THead>
+                <TBody>
+                  {services.map((s) => (
+                    <TR key={s.id}>
+                      <TD className="font-medium text-slate-900 dark:text-slate-100">{s.name}</TD>
+                      <TD>{formatCurrency(s.price)}</TD>
+                      <TD>
+                        <Badge tone={s.status === "active" ? "green" : "slate"} className="capitalize">
+                          {s.status}
+                        </Badge>
+                      </TD>
+                      {isAdmin && (
+                        <TD>
+                          <div className="flex justify-end gap-1">
+                            <button
+                              title="Edit"
+                              onClick={() => setEditing(s)}
+                              className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              title="Delete"
+                              onClick={() => setDeleting(s)}
+                              className="rounded-lg p-1.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </TD>
+                      )}
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
               {services.map((s) => (
-                <TR key={s.id}>
-                  <TD className="font-medium text-slate-900 dark:text-slate-100">{s.name}</TD>
-                  <TD>{formatCurrency(s.price)}</TD>
-                  <TD>
+                <div key={s.id} className="flex items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-900 dark:text-slate-100">{s.name}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{formatCurrency(s.price)}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
                     <Badge tone={s.status === "active" ? "green" : "slate"} className="capitalize">
                       {s.status}
                     </Badge>
-                  </TD>
-                  {isAdmin && (
-                    <TD>
-                      <div className="flex justify-end gap-1">
+                    {isAdmin && (
+                      <div className="flex gap-1">
                         <button
                           title="Edit"
                           onClick={() => setEditing(s)}
-                          className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           title="Delete"
                           onClick={() => setDeleting(s)}
-                          className="rounded-lg p-1.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10"
+                          className="rounded-lg p-2 text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                    </TD>
-                  )}
-                </TR>
+                    )}
+                  </div>
+                </div>
               ))}
-            </TBody>
-          </Table>
+            </div>
+          </>
         )}
       </Card>
 

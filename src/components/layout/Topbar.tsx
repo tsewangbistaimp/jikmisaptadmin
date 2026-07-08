@@ -50,6 +50,7 @@ export function Topbar() {
         <div className="flex flex-1 items-center gap-2 md:justify-end">
           <button
             onClick={() => setSearchOpen(true)}
+            aria-label="Search"
             className="flex min-h-12 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400 hover:bg-slate-100 md:min-h-10 md:max-w-xs dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
           >
             <Search className="h-4 w-4 shrink-0" />
@@ -63,6 +64,7 @@ export function Topbar() {
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 md:h-10 md:w-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -70,6 +72,7 @@ export function Topbar() {
 
           <button
             title={pendingCount > 0 ? `${pendingCount} bookings with pending balance` : "No pending balances"}
+            aria-label={pendingCount > 0 ? `${pendingCount} bookings with pending balance` : "No pending balances"}
             className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 md:h-10 md:w-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             <Bell className="h-4 w-4" />
