@@ -27,7 +27,9 @@ import {
   ReservationsChart,
   OccupancyGauge,
   RevenueBarChart,
+  MiniPercentDonut,
 } from "@/components/dashboard/DashboardWidgets";
+import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
 import { countByDay, countByWeek, countByMonth, sumByDay, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
 import type { Room } from "@/lib/database.types";
 
@@ -189,6 +191,11 @@ export default function Dashboard() {
   const arrivalsToday = activeBookings.filter((b) => b.check_in === today);
   const departuresToday = bookings.filter((b) => b.check_out === today && b.booking_status === "checked_in");
 
+  const checkInOutTotal = checkInsToday + checkOutsToday;
+  const checkInPct = checkInOutTotal > 0 ? Math.round((checkInsToday / checkInOutTotal) * 100) : 0;
+  const checkOutPct = 100 - checkInPct;
+  const checkInDates = activeBookings.map((b) => b.check_in);
+
   const recentActivity = [
     ...bookings.slice(0, 6).map((b) => ({
       id: `b-${b.id}`,
@@ -216,7 +223,7 @@ export default function Dashboard() {
           label="Total Bookings"
           value={totalBookingsAllTime}
           icon={<ClipboardList className="h-5 w-5" />}
-          tone="blue"
+          tone="purple"
           trend={monthOverMonthChange(bookingsThisMonth, bookingsLastMonth)}
           sparkline={bookingsSpark}
         />
@@ -239,7 +246,7 @@ export default function Dashboard() {
           label="Check Out Today"
           value={checkOutsToday}
           icon={<LogOut className="h-5 w-5" />}
-          tone="red"
+          tone="rose"
           trend={monthOverMonthChange(checkOutsToday, checkOutsYesterday)}
           sparkline={checkOutSpark}
         />
@@ -247,7 +254,7 @@ export default function Dashboard() {
           label="Total Revenue"
           value={formatCurrency(revenueThisMonth)}
           icon={<Wallet className="h-5 w-5" />}
-          tone="brand"
+          tone="sky"
           trend={monthOverMonthChange(revenueThisMonth, revenueLastMonth)}
           subtext="This month"
           sparkline={revenueSpark}
@@ -302,6 +309,24 @@ export default function Dashboard() {
                 <ScheduleRow key={`dep-${b.id}`} kind="Check Out" name={b.guest?.full_name ?? "Guest"} room={b.room?.room_number} tone="amber" />
               ))}
             </ul>
+          )}
+        </Card>
+      </div>
+
+      {/* Calendar + today's check-in/out split */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="p-5 lg:col-span-2">
+          <MiniCalendar highlightDates={checkInDates} />
+        </Card>
+        <Card className="flex flex-col justify-center p-5">
+          <p className="mb-3 text-sm font-semibold text-slate-800">Today's Check In / Out</p>
+          {checkInOutTotal === 0 ? (
+            <EmptyState title="Nothing today" />
+          ) : (
+            <div className="flex items-center justify-around">
+              <MiniPercentDonut label="Check In" pct={checkInPct} color="#7c3aed" />
+              <MiniPercentDonut label="Check Out" pct={checkOutPct} color="#f59e0b" />
+            </div>
           )}
         </Card>
       </div>

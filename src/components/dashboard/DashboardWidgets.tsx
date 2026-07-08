@@ -22,14 +22,16 @@ import { Card } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Stat card with optional trend + sparkline
+// Stat card with optional trend + sparkline — solid pastel cards, matching
+// the Travelgo-style reference (full-color background, icon in a soft white
+// badge, large number, label below).
 // ---------------------------------------------------------------------------
 const TONE_MAP = {
-  blue: { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", stroke: "#2563eb", fill: "#dbeafe" },
-  green: { bg: "bg-green-50 dark:bg-green-500/10", text: "text-green-600 dark:text-green-400", stroke: "#16a34a", fill: "#dcfce7" },
-  amber: { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", stroke: "#d97706", fill: "#fef3c7" },
-  red: { bg: "bg-red-50 dark:bg-red-500/10", text: "text-red-600 dark:text-red-400", stroke: "#dc2626", fill: "#fee2e2" },
-  brand: { bg: "bg-brand-50", text: "text-brand-600", stroke: "#2563eb", fill: "#dbeafe" },
+  purple: { card: "bg-violet-100", badge: "bg-white/70 text-violet-600", text: "text-violet-950", sub: "text-violet-700/70", stroke: "#7c3aed", trendBg: "bg-white/60 text-violet-700" },
+  green: { card: "bg-emerald-100", badge: "bg-white/70 text-emerald-600", text: "text-emerald-950", sub: "text-emerald-700/70", stroke: "#059669", trendBg: "bg-white/60 text-emerald-700" },
+  amber: { card: "bg-amber-100", badge: "bg-white/70 text-amber-600", text: "text-amber-950", sub: "text-amber-700/70", stroke: "#d97706", trendBg: "bg-white/60 text-amber-700" },
+  rose: { card: "bg-rose-100", badge: "bg-white/70 text-rose-600", text: "text-rose-950", sub: "text-rose-700/70", stroke: "#e11d48", trendBg: "bg-white/60 text-rose-700" },
+  sky: { card: "bg-sky-100", badge: "bg-white/70 text-sky-600", text: "text-sky-950", sub: "text-sky-700/70", stroke: "#0284c7", trendBg: "bg-white/60 text-sky-700" },
 } as const;
 
 export function StatCard({
@@ -51,31 +53,26 @@ export function StatCard({
 }) {
   const colors = TONE_MAP[tone];
   return (
-    <Card className="p-4 sm:p-5">
+    <div className={cn("rounded-2xl p-4 sm:p-5", colors.card)}>
       <div className="flex items-start justify-between">
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", colors.bg, colors.text)}>{icon}</div>
-        {trend !== undefined && (
-          <span
-            className={cn(
-              "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium",
-              trend >= 0 ? "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
-            )}
-          >
-            {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-            {Math.abs(trend)}%
-          </span>
-        )}
+        <p className={cn("text-xl font-bold sm:text-2xl", colors.text)}>{value}</p>
+        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", colors.badge)}>{icon}</div>
       </div>
-      <p className="mt-3 text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 sm:text-2xl">{value}</p>
-      {subtext && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{subtext}</p>}
+      <p className={cn("mt-1 text-sm font-medium", colors.sub)}>{label}</p>
+      {subtext && <p className={cn("mt-0.5 text-xs", colors.sub)}>{subtext}</p>}
+      {trend !== undefined && (
+        <span className={cn("mt-2 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium", colors.trendBg)}>
+          {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+          {Math.abs(trend)}%
+        </span>
+      )}
       {sparkline && sparkline.length > 1 && (
-        <div className="mt-2 h-10">
+        <div className="mt-2 h-8">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={sparkline} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={`spark-${tone}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.35} />
+                  <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.45} />
                   <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -84,7 +81,7 @@ export function StatCard({
           </ResponsiveContainer>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -92,10 +89,10 @@ export function StatCard({
 // Booking status donut
 // ---------------------------------------------------------------------------
 const STATUS_COLORS: Record<string, string> = {
-  Confirmed: "#2563eb",
-  "Checked In": "#16a34a",
+  Confirmed: "#7c3aed",
+  "Checked In": "#059669",
   "Checked Out": "#94a3b8",
-  Cancelled: "#dc2626",
+  Cancelled: "#e11d48",
 };
 
 export function BookingStatusDonut({ data }: { data: { name: string; value: number }[] }) {
@@ -149,8 +146,8 @@ export function ReservationsChart({ data }: { data: { label: string; bookings: n
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Line type="monotone" dataKey="bookings" name="Bookings" stroke="#2563eb" strokeWidth={2.5} dot={false} />
-          <Line type="monotone" dataKey="checkIns" name="Check Ins" stroke="#16a34a" strokeWidth={2.5} dot={false} />
+          <Line type="monotone" dataKey="bookings" name="Bookings" stroke="#7c3aed" strokeWidth={2.5} dot={false} />
+          <Line type="monotone" dataKey="checkIns" name="Check Ins" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -162,7 +159,7 @@ export function ReservationsChart({ data }: { data: { label: string; bookings: n
 // ---------------------------------------------------------------------------
 export function OccupancyGauge({ occupied, total }: { occupied: number; total: number }) {
   const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
-  const data = [{ name: "occupancy", value: pct, fill: "#2563eb" }];
+  const data = [{ name: "occupancy", value: pct, fill: "#7c3aed" }];
   return (
     <div className="flex flex-col items-center">
       <div className="relative h-44 w-44">
@@ -191,6 +188,28 @@ export function OccupancyGauge({ occupied, total }: { occupied: number; total: n
 }
 
 // ---------------------------------------------------------------------------
+// Small side-by-side percentage donuts (e.g. today's Check In vs Check Out split)
+// ---------------------------------------------------------------------------
+export function MiniPercentDonut({ label, pct, color }: { label: string; pct: number; color: string }) {
+  const data = [{ name: label, value: pct, fill: color }];
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative h-24 w-24">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart cx="50%" cy="50%" innerRadius="72%" outerRadius="100%" barSize={9} data={data} startAngle={90} endAngle={-270}>
+            <RadialBar dataKey="value" cornerRadius={20} background={{ fill: "#f1f5f9" }} />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <p className="text-lg font-semibold text-slate-900">{pct}%</p>
+        </div>
+      </div>
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Revenue bar chart
 // ---------------------------------------------------------------------------
 export function RevenueBarChart({ data }: { data: { label: string; total: number }[] }) {
@@ -206,7 +225,7 @@ export function RevenueBarChart({ data }: { data: { label: string; total: number
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Bar dataKey="total" fill="#2563eb" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="total" fill="#7c3aed" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
