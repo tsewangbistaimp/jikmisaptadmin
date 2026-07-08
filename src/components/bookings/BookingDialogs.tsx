@@ -282,7 +282,9 @@ export function CheckoutDialog({
         .eq("id", booking.id);
       if (bookingError) throw bookingError;
 
-      await supabase.from("rooms").update({ status: "cleaning" }).eq("id", booking.room_id);
+      // Room availability is calculated from booking dates, so once a
+      // booking is checked out it no longer blocks any future date range —
+      // no room status needs to change here.
 
       toast.success(`${booking.guest?.full_name} checked out`);
       onDone();

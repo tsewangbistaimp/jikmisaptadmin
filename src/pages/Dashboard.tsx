@@ -35,6 +35,7 @@ import type { Room } from "@/lib/database.types";
 
 interface BookingRow {
   id: string;
+  room_id: string;
   created_at: string;
   check_in: string;
   check_out: string;
@@ -84,7 +85,7 @@ export default function Dashboard() {
       supabase.from("rooms").select("*"),
       supabase
         .from("bookings")
-        .select("id, created_at, check_in, check_out, booking_status, total_amount, guest:guests(full_name), room:rooms(room_number)")
+        .select("id, room_id, created_at, check_in, check_out, booking_status, total_amount, guest:guests(full_name), room:rooms(room_number)")
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(1000),
@@ -135,8 +136,18 @@ export default function Dashboard() {
   const checkOutsToday = bookings.filter((b) => b.check_out === today && b.booking_status === "checked_in").length;
   const checkOutsYesterday = activeBookings.filter((b) => b.check_out === yesterday).length;
 
-  const availableRooms = rooms.filter((r) => r.status === "available").length;
-  const occupiedRooms = rooms.filter((r) => r.status === "occupied").length;
+  // Occupancy is calculated live from booking dates (a room is "occupied
+  // today" if a confirmed/checked-in booking's date range covers today),
+  // never from a stored room.status flag — that field can only mean
+  // "available" / "cleaning" / "maintenance" now, all independent of dates.
+  const occupiedTodayRoomIds = new Set(
+    activeBookings
+      .filter((b) => b.booking_status !== "checked_out" && b.check_in <= today && b.check_out > today)
+      .map((b) => b.room_id)
+  );
+  const underMaintenanceRooms = rooms.filter((r) => r.status === "maintenance").length;
+  const occupiedRooms = rooms.filter((r) => occupiedTodayRoomIds.has(r.id)).length;
+  const availableRooms = Math.max(rooms.length - occupiedRooms - underMaintenanceRooms, 0);
 
   const thisMonth = today.slice(0, 7);
   const lastMonthDate = new Date();

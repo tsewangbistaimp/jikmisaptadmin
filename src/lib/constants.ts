@@ -33,3 +33,12 @@ export const ROOM_STATUS_LABELS: Record<string, string> = {
   cleaning: "Cleaning",
   maintenance: "Maintenance",
 };
+
+// Statuses an admin can manually set on a room. "Occupied" is deliberately
+// excluded — whether a room is occupied is always calculated live from
+// booking dates, never set by hand, so it shouldn't be a choice here.
+export const ADMIN_ROOM_STATUS_OPTIONS: Record<string, string> = {
+  available: "Available",
+  cleaning: "Cleaning",
+  maintenance: "Maintenance",
+};

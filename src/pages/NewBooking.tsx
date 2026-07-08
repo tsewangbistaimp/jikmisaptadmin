@@ -90,6 +90,8 @@ export default function NewBooking() {
   const [customQty, setCustomQty] = React.useState("1");
   const [matchingGuest, setMatchingGuest] = React.useState<Guest | null>(null);
   const [usingExistingGuest, setUsingExistingGuest] = React.useState(false);
+  const [bookedRoomIds, setBookedRoomIds] = React.useState<Set<string>>(new Set());
+  const [checkingAvailability, setCheckingAvailability] = React.useState(false);
 
   const {
     register,
@@ -191,6 +193,45 @@ export default function NewBooking() {
     }
   }, [roomId, nights, rooms, setValue]);
 
+  // Room availability is calculated live from actual booking dates — a room
+  // is only unavailable if another confirmed/checked-in booking overlaps the
+  // selected check-in/check-out range. We deliberately do NOT rely on a
+  // static "occupied" flag on the room, since that can get stuck and block
+  // future dates even after a guest has checked out.
+  React.useEffect(() => {
+    if (!checkIn || !checkOut || new Date(checkOut) <= new Date(checkIn)) {
+      setBookedRoomIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    setCheckingAvailability(true);
+    supabase
+      .from("bookings")
+      .select("room_id")
+      .in("booking_status", ["confirmed", "checked_in"])
+      .lt("check_in", checkOut)
+      .gt("check_out", checkIn)
+      .then(({ data }) => {
+        if (cancelled) return;
+        setBookedRoomIds(new Set((data ?? []).map((b: { room_id: string }) => b.room_id)));
+        setCheckingAvailability(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [checkIn, checkOut]);
+
+  // If the currently selected room becomes unavailable because the dates
+  // changed, clear the selection so the guest can't accidentally submit a
+  // conflicting booking.
+  React.useEffect(() => {
+    if (roomId && bookedRoomIds.has(roomId)) {
+      setValue("room_id", "");
+      toast.error("That room is no longer available for the selected dates — please choose another.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookedRoomIds]);
+
   const applyExistingGuest = () => {
     if (!matchingGuest) return;
     setValue("full_name", matchingGuest.full_name);
@@ -205,6 +246,24 @@ export default function NewBooking() {
       toast.error("Advance paid can't exceed the total amount (room + add-ons)");
       return;
     }
+
+    // Defense in depth: re-check availability right before submitting, in
+    // case another booking was created for this room/date range while this
+    // form was open. The database's exclusion constraint is the ultimate
+    // safety net (caught below), but this gives a faster, clearer error.
+    const { data: conflicting } = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("room_id", values.room_id)
+      .in("booking_status", ["confirmed", "checked_in"])
+      .lt("check_in", values.check_out)
+      .gt("check_out", values.check_in)
+      .limit(1);
+    if (conflicting && conflicting.length > 0) {
+      toast.error("This room was just booked for an overlapping date range. Please pick another room or dates.");
+      return;
+    }
+
     try {
       // 1. Reuse or create guest
       let guestId = usingExistingGuest && matchingGuest ? matchingGuest.id : null;
@@ -310,8 +369,8 @@ export default function NewBooking() {
         if (txError) throw txError;
       }
 
-      // 5. Mark room occupied
-      await supabase.from("rooms").update({ status: "occupied" }).eq("id", values.room_id);
+      // Room occupancy is calculated from booking dates, not a manual
+      // status flag — no need to mutate rooms.status here at all.
 
       toast.success(`Booking ${booking.booking_number} saved`);
       reset();
@@ -410,16 +469,26 @@ export default function NewBooking() {
               <Label htmlFor="room_id">Room</Label>
               <IconField icon={BedDouble}>
                 <Select id="room_id" {...register("room_id")} error={errors.room_id?.message}>
-                  <option value="">Select a room</option>
-                  {rooms.map((r) => (
-                    <option key={r.id} value={r.id} disabled={r.status !== "available"}>
-                      {r.room_number} · {r.room_type} · {formatCurrency(r.price)}/night
-                      {r.status !== "available" ? ` (${r.status})` : ""}
-                    </option>
-                  ))}
+                  <option value="">{checkingAvailability ? "Checking availability…" : "Select a room"}</option>
+                  {rooms.map((r) => {
+                    const isMaintenance = r.status === "maintenance";
+                    const isBooked = bookedRoomIds.has(r.id);
+                    const unavailable = isMaintenance || isBooked;
+                    return (
+                      <option key={r.id} value={r.id} disabled={unavailable}>
+                        {r.room_number} · {r.room_type} · {formatCurrency(r.price)}/night
+                        {isMaintenance ? " (under maintenance)" : isBooked ? " (booked for these dates)" : ""}
+                      </option>
+                    );
+                  })}
                 </Select>
               </IconField>
               <FieldError message={errors.room_id?.message} />
+              {!checkIn || !checkOut ? (
+                <p className="mt-1.5 text-xs text-slate-400">Pick check-in and check-out dates to see which rooms are free.</p>
+              ) : (
+                <p className="mt-1.5 text-xs text-slate-400">Showing availability for {formatDateShort(checkIn)} – {formatDateShort(checkOut)}.</p>
+              )}
             </div>
 
             <div>

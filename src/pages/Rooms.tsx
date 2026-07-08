@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, cn } from "@/lib/utils";
 import { roomStatusTone } from "@/lib/badge-tones";
-import { ROOM_STATUS_LABELS } from "@/lib/constants";
+import { ROOM_STATUS_LABELS, ADMIN_ROOM_STATUS_OPTIONS } from "@/lib/constants";
 import { roomFormSchema, type RoomFormValues } from "@/lib/schemas";
 import type { Room } from "@/lib/database.types";
 
@@ -198,12 +198,15 @@ function RoomFormDialog({
         <div>
           <Label>Status</Label>
           <Select {...register("status")}>
-            {Object.entries(ROOM_STATUS_LABELS).map(([value, label]) => (
+            {Object.entries(ADMIN_ROOM_STATUS_OPTIONS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
           </Select>
+          <p className="mt-1.5 text-xs text-slate-400">
+            "Occupied" isn't listed here — whether a room is booked is always calculated from booking dates.
+          </p>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>
