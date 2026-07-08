@@ -3,8 +3,29 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { UserCheck, Sparkles, Minus, Plus, X, PlusCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  UserCheck,
+  Sparkles,
+  Minus,
+  Plus,
+  X,
+  PlusCircle,
+  User,
+  Phone,
+  Globe,
+  CreditCard,
+  Users,
+  BedDouble,
+  CalendarDays,
+  Tag,
+  FileText,
+  Wallet,
+  ShieldCheck,
+  Zap,
+  DoorClosed,
+  CalendarCheck,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Input, Label, Textarea, Select, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +36,46 @@ import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { formatCurrency, nightsBetween, todayISO, cn } from "@/lib/utils";
 import { paymentStatusTone } from "@/lib/badge-tones";
 import type { Guest, Room, Service } from "@/lib/database.types";
+
+const FORM_ID = "new-booking-form";
+
+function StepHeader({ step, title, description }: { step: number; title: string; description: string }) {
+  return (
+    <CardHeader className="flex-row items-start gap-3">
+      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">
+        {step}
+      </div>
+      <div>
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        <CardDescription>{description}</CardDescription>
+      </div>
+    </CardHeader>
+  );
+}
+
+function IconField({
+  icon: Icon,
+  align = "center",
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  align?: "center" | "top";
+  children: React.ReactElement<{ className?: string }>;
+}) {
+  return (
+    <div className="relative">
+      <Icon
+        className={cn(
+          "pointer-events-none absolute left-3 h-4 w-4 text-slate-400",
+          align === "center" ? "top-1/2 -translate-y-1/2" : "top-3.5"
+        )}
+      />
+      {React.cloneElement(children, {
+        className: cn("pl-9", children.props.className),
+      })}
+    </div>
+  );
+}
 
 export default function NewBooking() {
   const navigate = useNavigate();
@@ -64,13 +125,16 @@ export default function NewBooking() {
   }, []);
 
   const phone = watch("phone");
+  const fullName = watch("full_name");
   const checkIn = watch("check_in");
   const checkOut = watch("check_out");
   const roomId = watch("room_id");
+  const guestCount = Number(watch("guest_count")) || 1;
   const totalAmount = Number(watch("total_amount")) || 0;
   const advancePaid = Number(watch("advance_paid")) || 0;
 
   const nights = nightsBetween(checkIn, checkOut);
+  const selectedRoom = rooms.find((r) => r.id === roomId);
   const servicesTotal = services.reduce((sum, s) => sum + s.price * (addOnQty[s.id] ?? 0), 0);
   const customTotal = customItems.reduce((sum, c) => sum + c.price * c.quantity, 0);
   const addOnsTotal = servicesTotal + customTotal;
@@ -260,22 +324,22 @@ export default function NewBooking() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">New Booking</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Complete a booking in under 2 minutes.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">New Booking</h1>
+        <p className="text-sm text-slate-500">Create a new booking in just a few simple steps.</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} className="space-y-6 lg:col-span-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Guest Information</CardTitle>
-            <CardDescription>Who is staying with us?</CardDescription>
-          </CardHeader>
+          <StepHeader step={1} title="Guest Information" description="Information about your guest" />
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" {...register("phone")} placeholder="98XXXXXXXX" error={errors.phone?.message} />
+              <IconField icon={Phone}>
+                <Input id="phone" {...register("phone")} placeholder="98XXXXXXXX" error={errors.phone?.message} />
+              </IconField>
               <FieldError message={errors.phone?.message} />
               {matchingGuest && !usingExistingGuest && (
                 <button
@@ -291,86 +355,116 @@ export default function NewBooking() {
 
             <div className="sm:col-span-2">
               <Label htmlFor="full_name">Full Name</Label>
-              <Input id="full_name" {...register("full_name")} placeholder="Guest full name" error={errors.full_name?.message} />
+              <IconField icon={User}>
+                <Input id="full_name" {...register("full_name")} placeholder="Enter guest full name" error={errors.full_name?.message} />
+              </IconField>
               <FieldError message={errors.full_name?.message} />
             </div>
 
             <div>
               <Label htmlFor="nationality">Nationality</Label>
-              <Input id="nationality" {...register("nationality")} placeholder="e.g. Nepali" />
+              <IconField icon={Globe}>
+                <Input id="nationality" {...register("nationality")} placeholder="e.g. Nepali" />
+              </IconField>
             </div>
 
             <div>
               <Label htmlFor="passport_number">Passport / ID Number (Optional)</Label>
-              <Input id="passport_number" {...register("passport_number")} placeholder="Optional" />
+              <IconField icon={CreditCard}>
+                <Input id="passport_number" {...register("passport_number")} placeholder="Enter passport or ID number" />
+              </IconField>
             </div>
 
             <div>
               <Label htmlFor="guest_count">Number of Guests</Label>
-              <Input id="guest_count" type="number" min={1} {...register("guest_count", { valueAsNumber: true })} error={errors.guest_count?.message} />
+              <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 md:h-10">
+                <Users className="h-4 w-4 shrink-0 text-slate-400" />
+                <span className="flex-1 text-sm font-medium text-slate-700">{guestCount}</span>
+                <button
+                  type="button"
+                  aria-label="Decrease guests"
+                  onClick={() => setValue("guest_count", Math.max(1, guestCount - 1))}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Increase guests"
+                  onClick={() => setValue("guest_count", guestCount + 1)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <input type="hidden" {...register("guest_count", { valueAsNumber: true })} />
               <FieldError message={errors.guest_count?.message} />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Booking Information</CardTitle>
-            <CardDescription>Room and stay details.</CardDescription>
-          </CardHeader>
+          <StepHeader step={2} title="Booking Information" description="Details about the stay" />
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Label htmlFor="room_id">Room</Label>
-              <Select id="room_id" {...register("room_id")} error={errors.room_id?.message}>
-                <option value="">Select a room</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id} disabled={r.status !== "available"}>
-                    {r.room_number} · {r.room_type} · {formatCurrency(r.price)}/night
-                    {r.status !== "available" ? ` (${r.status})` : ""}
-                  </option>
-                ))}
-              </Select>
+              <IconField icon={BedDouble}>
+                <Select id="room_id" {...register("room_id")} error={errors.room_id?.message}>
+                  <option value="">Select a room</option>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id} disabled={r.status !== "available"}>
+                      {r.room_number} · {r.room_type} · {formatCurrency(r.price)}/night
+                      {r.status !== "available" ? ` (${r.status})` : ""}
+                    </option>
+                  ))}
+                </Select>
+              </IconField>
               <FieldError message={errors.room_id?.message} />
             </div>
 
             <div>
               <Label htmlFor="check_in">Check-in Date</Label>
-              <Input id="check_in" type="date" {...register("check_in")} error={errors.check_in?.message} />
+              <IconField icon={CalendarDays}>
+                <Input id="check_in" type="date" {...register("check_in")} error={errors.check_in?.message} />
+              </IconField>
               <FieldError message={errors.check_in?.message} />
             </div>
             <div>
               <Label htmlFor="check_out">Check-out Date</Label>
-              <Input id="check_out" type="date" {...register("check_out")} error={errors.check_out?.message} />
+              <IconField icon={CalendarDays}>
+                <Input id="check_out" type="date" {...register("check_out")} error={errors.check_out?.message} />
+              </IconField>
               <FieldError message={errors.check_out?.message} />
             </div>
 
-            <div className="sm:col-span-2 flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-400">
+            <div className="sm:col-span-2 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
               <span className="font-medium">{nights}</span> night{nights === 1 ? "" : "s"}
             </div>
 
             <div className="sm:col-span-2">
               <Label htmlFor="booking_source">Booking Source</Label>
-              <Select id="booking_source" {...register("booking_source")}>
-                {Object.entries(BOOKING_SOURCE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+              <IconField icon={Tag}>
+                <Select id="booking_source" {...register("booking_source")}>
+                  {Object.entries(BOOKING_SOURCE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </IconField>
             </div>
 
             <div className="sm:col-span-2">
-              <Label htmlFor="notes">Special Notes</Label>
-              <Textarea id="notes" {...register("notes")} placeholder="Any special requests…" />
+              <Label htmlFor="notes">Special Notes (Optional)</Label>
+              <IconField icon={FileText} align="top">
+                <Textarea id="notes" {...register("notes")} placeholder="Any special requests or notes…" />
+              </IconField>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Services & Add-ons</CardTitle>
-            <CardDescription>Laundry, breakfast, and other extras — optional.</CardDescription>
-          </CardHeader>
+          <StepHeader step={3} title="Services & Add-ons" description="Laundry, breakfast, and other extras — optional" />
           <CardContent className="space-y-2">
             {services.map((s) => {
               const qty = addOnQty[s.id] ?? 0;
@@ -490,19 +584,20 @@ export default function NewBooking() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Payment Information</CardTitle>
-            <CardDescription>Balance and payment status are calculated automatically.</CardDescription>
-          </CardHeader>
+          <StepHeader step={4} title="Payment Information" description="Balance and payment status are calculated automatically" />
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="total_amount">Room Total</Label>
-              <Input id="total_amount" type="number" min={0} step="0.01" {...register("total_amount", { valueAsNumber: true })} error={errors.total_amount?.message} />
+              <IconField icon={Wallet}>
+                <Input id="total_amount" type="number" min={0} step="0.01" {...register("total_amount", { valueAsNumber: true })} error={errors.total_amount?.message} />
+              </IconField>
               <FieldError message={errors.total_amount?.message} />
             </div>
             <div>
               <Label htmlFor="advance_paid">Advance Paid</Label>
-              <Input id="advance_paid" type="number" min={0} step="0.01" {...register("advance_paid", { valueAsNumber: true })} error={errors.advance_paid?.message} />
+              <IconField icon={Wallet}>
+                <Input id="advance_paid" type="number" min={0} step="0.01" {...register("advance_paid", { valueAsNumber: true })} error={errors.advance_paid?.message} />
+              </IconField>
               <FieldError message={errors.advance_paid?.message} />
             </div>
 
@@ -512,14 +607,16 @@ export default function NewBooking() {
                 control={control}
                 name="payment_method"
                 render={({ field }) => (
-                  <Select id="payment_method" {...field} value={field.value ?? ""} error={errors.payment_method?.message}>
-                    <option value="">Select method</option>
-                    {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
+                  <IconField icon={CreditCard}>
+                    <Select id="payment_method" {...field} value={field.value ?? ""} error={errors.payment_method?.message}>
+                      <option value="">Select method</option>
+                      {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </IconField>
                 )}
               />
               <FieldError message={errors.payment_method?.message} />
@@ -527,39 +624,16 @@ export default function NewBooking() {
 
             <div>
               <Label>Payment Status</Label>
-              <div className="flex h-10 items-center">
+              <div className="flex h-12 items-center md:h-10">
                 <Badge tone={paymentStatusTone(paymentStatus)} className="capitalize">
                   {paymentStatus}
                 </Badge>
               </div>
             </div>
-
-            <div className="sm:col-span-2 space-y-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 px-4 py-3">
-              {addOnsTotal > 0 && (
-                <>
-                  <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-                    <span>Room Total</span>
-                    <span>{formatCurrency(totalAmount)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-                    <span>Add-ons</span>
-                    <span>{formatCurrency(addOnsTotal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm font-medium text-slate-700 dark:text-slate-300 border-t border-slate-200 dark:border-slate-800 pt-1.5">
-                    <span>Grand Total</span>
-                    <span>{formatCurrency(grandTotal)}</span>
-                  </div>
-                </>
-              )}
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Remaining Balance</span>
-                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(remaining)}</span>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-3 pb-8">
+        <div className="flex justify-end gap-3 pb-8 lg:hidden">
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>
             Cancel
           </Button>
@@ -567,7 +641,107 @@ export default function NewBooking() {
             Save Booking
           </Button>
         </div>
-      </form>
+        </form>
+
+        {/* Booking summary sidebar */}
+        <div className="space-y-4 lg:sticky lg:top-6 lg:col-span-1 lg:self-start">
+          <Card className="flex items-start gap-3 bg-brand-50 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-600">
+              <Zap className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Quick & Easy</p>
+              <p className="text-xs text-slate-500">Complete a booking in under 2 minutes.</p>
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 p-5 pb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-slate-400" />
+                <p className="text-sm font-semibold text-slate-900">Booking Summary</p>
+              </div>
+            </div>
+
+            <div className="mx-5 mt-4 flex h-28 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+              <DoorClosed className="h-9 w-9 opacity-90" />
+            </div>
+
+            <div className="space-y-3 p-5 text-sm">
+              <SummaryRow icon={BedDouble} label="Room" value={selectedRoom ? `${selectedRoom.room_type}` : "Not selected"} badge={selectedRoom?.room_number} />
+              <SummaryRow icon={User} label="Guest" value={fullName || "Not entered"} />
+              <SummaryRow icon={CalendarDays} label="Check-in" value={checkIn ? formatDateShort(checkIn) : "—"} />
+              <SummaryRow icon={CalendarCheck} label="Check-out" value={checkOut ? formatDateShort(checkOut) : "—"} />
+              <SummaryRow icon={CalendarDays} label="Nights" value={String(nights)} />
+
+              <div className="space-y-1.5 border-t border-slate-100 pt-3">
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>Room Charge</span>
+                  <span>{formatCurrency(totalAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>Extra Services</span>
+                  <span>{formatCurrency(addOnsTotal)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-base font-semibold text-slate-900">
+                <span>Total Amount</span>
+                <span className="text-brand-600">{formatCurrency(grandTotal)}</span>
+              </div>
+              {advancePaid > 0 && (
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>Remaining Balance</span>
+                  <span>{formatCurrency(remaining)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 p-5 pt-0">
+              <Button type="submit" form={FORM_ID} className="w-full" loading={isSubmitting}>
+                <CalendarCheck className="h-4 w-4" /> Create Booking
+              </Button>
+              <Button type="button" variant="outline" className="hidden w-full lg:flex" onClick={() => navigate(-1)}>
+                Cancel
+              </Button>
+              <p className="flex items-center justify-center gap-1.5 pt-1 text-xs text-slate-400">
+                <ShieldCheck className="h-3.5 w-3.5" /> Your booking information is secure
+              </p>
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
   );
+}
+
+function SummaryRow({
+  icon: Icon,
+  label,
+  value,
+  badge,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  badge?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-2 text-slate-500">
+        <Icon className="h-4 w-4 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-xs">{label}</p>
+          <p className="truncate font-medium text-slate-800">{value}</p>
+        </div>
+      </div>
+      {badge && <Badge tone="slate">{badge}</Badge>}
+    </div>
+  );
+}
+
+function formatDateShort(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(d);
 }
