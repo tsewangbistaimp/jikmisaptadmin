@@ -92,8 +92,8 @@ export default function Transactions() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Transactions</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Transactions</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {filtered.length} transactions · {formatCurrency(total)} total
           </p>
         </div>
@@ -105,7 +105,7 @@ export default function Transactions() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search guest, booking, notes…" className="pl-9" />
           </div>
           <Select value={range} onChange={(e) => setRange(e.target.value as RangeFilter)} className="sm:w-40">
@@ -146,7 +146,7 @@ export default function Transactions() {
             <TBody>
               {filtered.map((t) => (
                 <TR key={t.id}>
-                  <TD className="font-medium text-slate-900">{t.booking?.booking_number ?? "—"}</TD>
+                  <TD className="font-medium text-slate-900 dark:text-slate-100">{t.booking?.booking_number ?? "—"}</TD>
                   <TD>{t.guest?.full_name ?? "—"}</TD>
                   <TD className="font-semibold">{formatCurrency(t.amount)}</TD>
                   <TD>{PAYMENT_METHOD_LABELS[t.payment_method]}</TD>

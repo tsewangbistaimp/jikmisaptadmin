@@ -6,19 +6,22 @@ import "./index.css";
 import App from "./App.tsx";
 import MissingConfig from "./pages/MissingConfig.tsx";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/hooks/useTheme";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {isSupabaseConfigured ? (
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-          <Toaster position="top-right" richColors closeButton />
-        </AuthProvider>
-      </BrowserRouter>
-    ) : (
-      <MissingConfig />
-    )}
+    <ThemeProvider>
+      {isSupabaseConfigured ? (
+        <BrowserRouter>
+          <AuthProvider>
+            <App />
+            <Toaster position="top-right" richColors closeButton />
+          </AuthProvider>
+        </BrowserRouter>
+      ) : (
+        <MissingConfig />
+      )}
+    </ThemeProvider>
   </StrictMode>
 );

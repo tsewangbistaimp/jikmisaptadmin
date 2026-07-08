@@ -52,13 +52,13 @@ export default function Guests() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Guests</h1>
-        <p className="text-sm text-slate-500">{guests.length} guests on record</p>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Guests</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{guests.length} guests on record</p>
       </div>
 
       <Card className="p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search guests…" className="pl-9" />
         </div>
       </Card>
@@ -82,7 +82,7 @@ export default function Guests() {
             <TBody>
               {filtered.map((g) => (
                 <TR key={g.id} className="cursor-pointer" onClick={() => setSelected(g)}>
-                  <TD className="font-medium text-slate-900">
+                  <TD className="font-medium text-slate-900 dark:text-slate-100">
                     <div className="flex items-center gap-2">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
                         {initials(g.full_name)}
@@ -148,13 +148,13 @@ function GuestProfileDialog({ guest, onClose }: { guest: Guest | null; onClose: 
 
         {guest.notes && (
           <div>
-            <p className="text-xs font-medium uppercase text-slate-400">Notes</p>
-            <p className="mt-1 text-sm text-slate-700">{guest.notes}</p>
+            <p className="text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Notes</p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{guest.notes}</p>
           </div>
         )}
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase text-slate-400">Booking History</p>
+          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Booking History</p>
           {loading ? (
             <PageLoader />
           ) : bookings.length === 0 ? (
@@ -162,12 +162,12 @@ function GuestProfileDialog({ guest, onClose }: { guest: Guest | null; onClose: 
           ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto scrollbar-thin">
               {bookings.map((b) => (
-                <li key={b.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                <li key={b.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
                   <div>
-                    <p className="font-medium text-slate-800">
+                    <p className="font-medium text-slate-800 dark:text-slate-200">
                       {b.booking_number} · Room {b.room?.room_number}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       {formatDate(b.check_in)} → {formatDate(b.check_out)}
                     </p>
                   </div>
@@ -186,9 +186,9 @@ function GuestProfileDialog({ guest, onClose }: { guest: Guest | null; onClose: 
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className="text-base font-semibold text-slate-900">{value}</p>
+    <div className="rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2.5">
+      <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }
@@ -196,8 +196,8 @@ function StatBox({ label, value }: { label: string; value: string }) {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className="font-medium text-slate-800">{value}</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="font-medium text-slate-800 dark:text-slate-200">{value}</p>
     </div>
   );
 }

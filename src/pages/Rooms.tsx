@@ -51,8 +51,8 @@ export default function Rooms() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Rooms</h1>
-          <p className="text-sm text-slate-500">{rooms.length} rooms</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Rooms</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{rooms.length} rooms</p>
         </div>
         {isAdmin && (
           <Button size="sm" onClick={() => setEditing("new")}>
@@ -78,16 +78,16 @@ export default function Rooms() {
               )}
             >
               <div className="flex items-start justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                   <DoorClosed className="h-5 w-5" />
                 </div>
                 <Badge tone={roomStatusTone(r.status)} className="capitalize">
                   {ROOM_STATUS_LABELS[r.status]}
                 </Badge>
               </div>
-              <p className="mt-3 text-lg font-semibold text-slate-900">Room {r.room_number}</p>
-              <p className="text-sm text-slate-500">{r.room_type}</p>
-              <p className="mt-2 text-sm font-medium text-slate-700">{formatCurrency(r.price)} / night</p>
+              <p className="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Room {r.room_number}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{r.room_type}</p>
+              <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">{formatCurrency(r.price)} / night</p>
 
               {isAdmin && (
                 <div className="mt-4 flex gap-2">
@@ -95,7 +95,7 @@ export default function Rooms() {
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setDeleting(r)}>
-                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                    <Trash2 className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
                   </Button>
                 </div>
               )}

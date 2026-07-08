@@ -45,8 +45,8 @@ export default function Services() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Services & Add-ons</h1>
-          <p className="text-sm text-slate-500">Laundry, breakfast, and other extras guests can add to a booking.</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Services & Add-ons</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Laundry, breakfast, and other extras guests can add to a booking.</p>
         </div>
         {isAdmin && (
           <Button size="sm" onClick={() => setEditing("new")}>
@@ -77,7 +77,7 @@ export default function Services() {
             <TBody>
               {services.map((s) => (
                 <TR key={s.id}>
-                  <TD className="font-medium text-slate-900">{s.name}</TD>
+                  <TD className="font-medium text-slate-900 dark:text-slate-100">{s.name}</TD>
                   <TD>{formatCurrency(s.price)}</TD>
                   <TD>
                     <Badge tone={s.status === "active" ? "green" : "slate"} className="capitalize">
@@ -90,14 +90,14 @@ export default function Services() {
                         <button
                           title="Edit"
                           onClick={() => setEditing(s)}
-                          className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+                          className="rounded-lg p-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           title="Delete"
                           onClick={() => setDeleting(s)}
-                          className="rounded-lg p-1.5 text-red-500 hover:bg-red-50"
+                          className="rounded-lg p-1.5 text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

@@ -56,7 +56,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
   return (
     <Dialog open={open} onClose={onClose} className="max-w-xl">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         <Input
           autoFocus
           value={query}
@@ -74,12 +74,12 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         )}
 
         {!loading && query.length >= 2 && !hasResults && (
-          <p className="py-6 text-center text-sm text-slate-400">No results found.</p>
+          <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No results found.</p>
         )}
 
         {guests.length > 0 && (
           <div className="mb-2">
-            <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400">Guests</p>
+            <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">Guests</p>
             {guests.map((g) => (
               <button
                 key={g.id}
@@ -87,11 +87,11 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
                   navigate(`/guests?highlight=${g.id}`);
                   onClose();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50 dark:bg-slate-900"
               >
-                <User className="h-4 w-4 text-slate-400" />
-                <span className="font-medium text-slate-800">{g.full_name}</span>
-                <span className="text-slate-400">{g.phone}</span>
+                <User className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <span className="font-medium text-slate-800 dark:text-slate-200">{g.full_name}</span>
+                <span className="text-slate-400 dark:text-slate-500">{g.phone}</span>
               </button>
             ))}
           </div>
@@ -99,7 +99,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
 
         {bookings.length > 0 && (
           <div className="mb-2">
-            <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400">Bookings</p>
+            <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">Bookings</p>
             {bookings.map((b) => (
               <button
                 key={b.id}
@@ -107,10 +107,10 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
                   navigate(`/bookings?highlight=${b.id}`);
                   onClose();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50 dark:bg-slate-900"
               >
-                <ClipboardList className="h-4 w-4 text-slate-400" />
-                <span className="font-medium text-slate-800">{b.booking_number}</span>
+                <ClipboardList className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <span className="font-medium text-slate-800 dark:text-slate-200">{b.booking_number}</span>
               </button>
             ))}
           </div>
@@ -118,7 +118,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
 
         {rooms.length > 0 && (
           <div>
-            <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400">Rooms</p>
+            <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">Rooms</p>
             {rooms.map((r) => (
               <button
                 key={r.id}
@@ -126,11 +126,11 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
                   navigate(`/rooms?highlight=${r.id}`);
                   onClose();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50 dark:bg-slate-900"
               >
-                <DoorClosed className="h-4 w-4 text-slate-400" />
-                <span className="font-medium text-slate-800">Room {r.room_number}</span>
-                <span className="text-slate-400">{r.room_type}</span>
+                <DoorClosed className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <span className="font-medium text-slate-800 dark:text-slate-200">Room {r.room_number}</span>
+                <span className="text-slate-400 dark:text-slate-500">{r.room_type}</span>
               </button>
             ))}
           </div>

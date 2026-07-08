@@ -27,16 +27,16 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-      <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+      <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
         {icon ?? <Inbox className="h-6 w-6" />}
       </div>
-      <p className="text-sm font-medium text-slate-700">{title}</p>
-      {description && <p className="text-sm text-slate-500 max-w-sm">{description}</p>}
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{title}</p>
+      {description && <p className="text-sm text-slate-500 max-w-sm dark:text-slate-400">{description}</p>}
       {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-lg bg-slate-100", className)} />;
+  return <div className={cn("animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800", className)} />;
 }

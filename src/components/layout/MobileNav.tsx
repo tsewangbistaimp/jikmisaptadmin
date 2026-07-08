@@ -41,7 +41,7 @@ export function MobileNav() {
 
       {/* Bottom tab bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-slate-200 bg-white/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-slate-200 bg-white/95 backdrop-blur md:hidden dark:border-slate-800 dark:bg-slate-950/95"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {tabs.map((tab) => (
@@ -52,7 +52,7 @@ export function MobileNav() {
             className={({ isActive }) =>
               cn(
                 "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium min-h-12",
-                isActive ? "text-brand-600" : "text-slate-400"
+                isActive ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500"
               )
             }
           >
@@ -62,7 +62,7 @@ export function MobileNav() {
         ))}
         <button
           onClick={() => setMoreOpen(true)}
-          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium min-h-12 text-slate-400"
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium min-h-12 text-slate-400 dark:text-slate-500"
         >
           <Menu className="h-5 w-5" />
           More
@@ -74,13 +74,13 @@ export function MobileNav() {
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMoreOpen(false)} />
           <div
-            className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-2 pb-4 shadow-2xl"
+            className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-2 pb-4 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
           >
             <div className="flex items-center justify-between px-3 py-3">
-              <p className="text-sm font-semibold text-slate-900">More</p>
-              <button onClick={() => setMoreOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100">
-                <X className="h-5 w-5 text-slate-500" />
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">More</p>
+              <button onClick={() => setMoreOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
               </button>
             </div>
 
@@ -94,7 +94,7 @@ export function MobileNav() {
                 await signOut();
                 navigate("/login");
               }}
-              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
             >
               <LogOut className="h-5 w-5" />
               Log out
@@ -124,7 +124,9 @@ function MoreLink({
       className={({ isActive }) =>
         cn(
           "flex min-h-12 items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium",
-          isActive ? "bg-brand-50 text-brand-700" : "text-slate-700 hover:bg-slate-50"
+          isActive
+            ? "bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-400"
+            : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
         )
       }
     >

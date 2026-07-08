@@ -262,8 +262,8 @@ export default function NewBooking() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">New Booking</h1>
-        <p className="text-sm text-slate-500">Complete a booking in under 2 minutes.</p>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">New Booking</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Complete a booking in under 2 minutes.</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -344,7 +344,7 @@ export default function NewBooking() {
               <FieldError message={errors.check_out?.message} />
             </div>
 
-            <div className="sm:col-span-2 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            <div className="sm:col-span-2 flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-600 dark:text-slate-400">
               <span className="font-medium">{nights}</span> night{nights === 1 ? "" : "s"}
             </div>
 
@@ -379,14 +379,14 @@ export default function NewBooking() {
                   key={s.id}
                   className={cn(
                     "flex items-center justify-between rounded-xl border px-3 py-2.5 transition-colors",
-                    qty > 0 ? "border-brand-200 bg-brand-50" : "border-slate-200"
+                    qty > 0 ? "border-brand-200 bg-brand-50" : "border-slate-200 dark:border-slate-800"
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <Sparkles className={cn("h-4 w-4", qty > 0 ? "text-brand-500" : "text-slate-300")} />
+                    <Sparkles className={cn("h-4 w-4", qty > 0 ? "text-brand-500" : "text-slate-300 dark:text-slate-600")} />
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{s.name}</p>
-                      <p className="text-xs text-slate-400">{formatCurrency(s.price)} each</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{s.name}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{formatCurrency(s.price)} each</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -394,15 +394,15 @@ export default function NewBooking() {
                       type="button"
                       onClick={() => setQty(s.id, qty - 1)}
                       disabled={qty === 0}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="w-5 text-center text-sm font-medium text-slate-700">{qty}</span>
+                    <span className="w-5 text-center text-sm font-medium text-slate-700 dark:text-slate-300">{qty}</span>
                     <button
                       type="button"
                       onClick={() => setQty(s.id, qty + 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
@@ -416,20 +416,20 @@ export default function NewBooking() {
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-brand-500" />
                   <div>
-                    <p className="text-sm font-medium text-slate-800">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
                       {c.name} {c.quantity > 1 ? `× ${c.quantity}` : ""}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       {formatCurrency(c.price)} each · custom item
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-700">{formatCurrency(c.price * c.quantity)}</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatCurrency(c.price * c.quantity)}</span>
                   <button
                     type="button"
                     onClick={() => removeCustomItem(c.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-500"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:bg-red-500/10 hover:text-red-500 dark:text-red-400"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -438,7 +438,7 @@ export default function NewBooking() {
             ))}
 
             {addingCustom ? (
-              <div className="space-y-2 rounded-xl border border-dashed border-slate-300 p-3">
+              <div className="space-y-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_auto_auto]">
                   <Input
                     placeholder="Item name (e.g. Extra towel)"
@@ -477,7 +477,7 @@ export default function NewBooking() {
               <button
                 type="button"
                 onClick={() => setAddingCustom(true)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-500 hover:border-brand-300 hover:text-brand-600"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-3 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:border-brand-300 hover:text-brand-600"
               >
                 <PlusCircle className="h-4 w-4" />
                 Add custom item
@@ -531,26 +531,26 @@ export default function NewBooking() {
               </div>
             </div>
 
-            <div className="sm:col-span-2 space-y-1.5 rounded-xl bg-slate-50 px-4 py-3">
+            <div className="sm:col-span-2 space-y-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 px-4 py-3">
               {addOnsTotal > 0 && (
                 <>
-                  <div className="flex items-center justify-between text-sm text-slate-500">
+                  <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
                     <span>Room Total</span>
                     <span>{formatCurrency(totalAmount)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm text-slate-500">
+                  <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
                     <span>Add-ons</span>
                     <span>{formatCurrency(addOnsTotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm font-medium text-slate-700 border-t border-slate-200 pt-1.5">
+                  <div className="flex items-center justify-between text-sm font-medium text-slate-700 dark:text-slate-300 border-t border-slate-200 dark:border-slate-800 pt-1.5">
                     <span>Grand Total</span>
                     <span>{formatCurrency(grandTotal)}</span>
                   </div>
                 </>
               )}
               <div className="flex items-center justify-between pt-1">
-                <span className="text-sm font-medium text-slate-600">Remaining Balance</span>
-                <span className="text-lg font-semibold text-slate-900">{formatCurrency(remaining)}</span>
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Remaining Balance</span>
+                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(remaining)}</span>
               </div>
             </div>
           </CardContent>

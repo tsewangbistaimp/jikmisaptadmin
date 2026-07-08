@@ -1,8 +1,29 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * supabase-js's functions.invoke() discards the response body on non-2xx
+ * status codes and only gives you a generic "Edge Function returned a
+ * non-2xx status code" message. Our edge functions always return a JSON
+ * body like { error: "..." } describing what went wrong — this pulls that
+ * real message out of the raw Response so we can show it to the user.
+ */
+export async function getFunctionErrorMessage(error: unknown, fallback = "Something went wrong"): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return body.error as string;
+    } catch {
+      // response wasn't JSON — fall through to generic message
+    }
+  }
+  if (error instanceof Error) return error.message;
+  return fallback;
 }
 
 export function formatCurrency(amount: number) {

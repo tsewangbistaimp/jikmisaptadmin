@@ -12,7 +12,7 @@ import { Input, Label, Select, FieldError } from "@/components/ui/input";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { initials } from "@/lib/utils";
+import { initials, getFunctionErrorMessage } from "@/lib/utils";
 import { staffFormSchema, type StaffFormValues } from "@/lib/schemas";
 import type { Profile } from "@/lib/database.types";
 
@@ -39,15 +39,15 @@ export default function UsersSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Settings & Staff</h1>
-        <p className="text-sm text-slate-500">Manage receptionist accounts. Only the Super Admin can access this page.</p>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Settings & Staff</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Manage receptionist accounts. Only the Super Admin can access this page.</p>
       </div>
 
       <Card>
         <div className="flex items-center justify-between p-5 pb-0">
           <div>
-            <p className="text-base font-semibold text-slate-900">Staff Accounts</p>
-            <p className="text-sm text-slate-500">{staff.length} accounts</p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Staff Accounts</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{staff.length} accounts</p>
           </div>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> New Staff Account
@@ -73,13 +73,13 @@ export default function UsersSettings() {
               <TBody>
                 {staff.map((s) => (
                   <TR key={s.id}>
-                    <TD className="font-medium text-slate-900">
+                    <TD className="font-medium text-slate-900 dark:text-slate-100">
                       <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
                           {initials(s.full_name)}
                         </div>
                         {s.full_name}
-                        {s.id === currentUser?.id && <span className="text-xs text-slate-400">(you)</span>}
+                        {s.id === currentUser?.id && <span className="text-xs text-slate-400 dark:text-slate-500">(you)</span>}
                       </div>
                     </TD>
                     <TD>{s.username}</TD>
@@ -141,7 +141,7 @@ function IconButton({
     <button
       title={title}
       onClick={onClick}
-      className={`rounded-lg p-1.5 hover:bg-slate-100 ${destructive ? "text-red-500 hover:bg-red-50" : "text-slate-500"}`}
+      className={`rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 ${destructive ? "text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10" : "text-slate-500 dark:text-slate-400"}`}
     >
       {children}
     </button>
@@ -167,7 +167,7 @@ function CreateStaffDialog({ open, onClose, onCreated }: { open: boolean; onClos
     const { data, error } = await supabase.functions.invoke("admin-create-user", { body: values });
     const fnError = (data as { error?: string } | null)?.error;
     if (error || fnError) {
-      toast.error(fnError || error?.message || "Could not create account");
+      toast.error(fnError || (await getFunctionErrorMessage(error, "Could not create account")));
       return;
     }
     toast.success(`Account created for ${values.full_name}`);
@@ -248,7 +248,7 @@ function ResetPasswordDialog({ profile, onClose }: { profile: Profile | null; on
     setLoading(false);
     const fnError = (data as { error?: string } | null)?.error;
     if (error || fnError) {
-      setError(fnError || error?.message || "Could not reset password");
+      setError(fnError || (await getFunctionErrorMessage(error, "Could not reset password")));
       return;
     }
     toast.success(`Password reset for ${profile.full_name}`);
@@ -289,7 +289,7 @@ function ToggleStatusDialog({ profile, onClose, onDone }: { profile: Profile | n
     setLoading(false);
     const fnError = (data as { error?: string } | null)?.error;
     if (error || fnError) {
-      toast.error(fnError || error?.message || "Could not update status");
+      toast.error(fnError || (await getFunctionErrorMessage(error, "Could not update status")));
       return;
     }
     toast.success(`${profile.full_name} ${nextStatus === "active" ? "enabled" : "disabled"}`);
@@ -327,7 +327,7 @@ function DeleteStaffDialog({ profile, onClose, onDone }: { profile: Profile | nu
     setLoading(false);
     const fnError = (data as { error?: string } | null)?.error;
     if (error || fnError) {
-      toast.error(fnError || error?.message || "Could not delete account");
+      toast.error(fnError || (await getFunctionErrorMessage(error, "Could not delete account")));
       return;
     }
     toast.success(`${profile.full_name} removed`);

@@ -257,7 +257,7 @@ export default function Dashboard() {
       {/* Row 2: donut, reservations chart, today's schedule */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-5">
-          <p className="mb-4 text-sm font-semibold text-slate-800">Booking Overview</p>
+          <p className="mb-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Booking Overview</p>
           {donutData.length === 0 ? (
             <EmptyState title="No bookings yet" />
           ) : (
@@ -267,15 +267,15 @@ export default function Dashboard() {
 
         <Card className="p-5 lg:col-span-1">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-800">Reservations Analytics</p>
-            <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Reservations Analytics</p>
+            <div className="flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5">
               {(["daily", "weekly", "monthly"] as Granularity[]).map((g) => (
                 <button
                   key={g}
                   onClick={() => setGranularity(g)}
                   className={cn(
                     "rounded-md px-2 py-1 text-xs font-medium capitalize transition-colors",
-                    granularity === g ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    granularity === g ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
                   )}
                 >
                   {g}
@@ -288,8 +288,8 @@ export default function Dashboard() {
 
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-800">Today's Schedule</p>
-            <CalendarClock className="h-4 w-4 text-slate-400" />
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Today's Schedule</p>
+            <CalendarClock className="h-4 w-4 text-slate-400 dark:text-slate-500" />
           </div>
           {arrivalsToday.length === 0 && departuresToday.length === 0 ? (
             <EmptyState title="Nothing scheduled today" />
@@ -309,19 +309,19 @@ export default function Dashboard() {
       {/* Row 3: occupancy, revenue, recent activity, quick actions */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <Card className="p-5">
-          <p className="mb-2 text-sm font-semibold text-slate-800">Occupancy Rate</p>
+          <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">Occupancy Rate</p>
           <OccupancyGauge occupied={occupiedRooms} total={rooms.length} />
         </Card>
 
         <Card className="p-5">
-          <p className="mb-2 text-sm font-semibold text-slate-800">Revenue Overview</p>
-          <p className="mb-1 text-xl font-semibold text-slate-900">{formatCurrency(revenueThisMonth)}</p>
-          <p className="mb-2 text-xs text-slate-400">This month</p>
+          <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">Revenue Overview</p>
+          <p className="mb-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(revenueThisMonth)}</p>
+          <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">This month</p>
           <RevenueBarChart data={revenueDaily.map((d) => ({ label: d.label, total: d.total }))} />
         </Card>
 
         <Card className="p-5">
-          <p className="mb-3 text-sm font-semibold text-slate-800">Recent Activity</p>
+          <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Recent Activity</p>
           {recentActivity.length === 0 ? (
             <EmptyState title="No activity yet" />
           ) : (
@@ -331,16 +331,16 @@ export default function Dashboard() {
                   <div
                     className={cn(
                       "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                      a.type === "booking" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600"
+                      a.type === "booking" ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" : "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400"
                     )}
                   >
                     {a.type === "booking" ? <ClipboardList className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800">{a.title}</p>
-                    <p className="truncate text-xs text-slate-400">{a.subtitle}</p>
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{a.title}</p>
+                    <p className="truncate text-xs text-slate-400 dark:text-slate-500">{a.subtitle}</p>
                   </div>
-                  <span className="shrink-0 text-xs text-slate-400">{relativeTime(a.time)}</span>
+                  <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{relativeTime(a.time)}</span>
                 </li>
               ))}
             </ul>
@@ -348,7 +348,7 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-5">
-          <p className="mb-3 text-sm font-semibold text-slate-800">Quick Actions</p>
+          <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Quick Actions</p>
           <div className="grid grid-cols-2 gap-2">
             <QuickAction to="/bookings/new" label="New Booking" icon={<PlusCircle className="h-4 w-4" />} tone="blue" />
             <QuickAction to="/rooms" label="Manage Rooms" icon={<DoorOpen className="h-4 w-4" />} tone="green" />
@@ -369,19 +369,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card className="p-5 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-600">Current Guests</p>
-            <p className="text-xl font-semibold text-slate-900">{statusCounts.checked_in}</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Current Guests</p>
+            <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">{statusCounts.checked_in}</p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400">
             <Users className="h-5 w-5" />
           </div>
         </Card>
         <Card className="p-5 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-600">Pending Balance</p>
-            <p className="text-xl font-semibold text-slate-900">{formatCurrency(pendingBalance)}</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Balance</p>
+            <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(pendingBalance)}</p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">
             <Wallet className="h-5 w-5" />
           </div>
         </Card>
@@ -406,14 +406,14 @@ function ScheduleRow({
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-          tone === "green" ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"
+          tone === "green" ? "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400" : "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"
         )}
       >
         {tone === "green" ? <LogIn className="h-4 w-4" /> : <LogOut className="h-4 w-4" />}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-800">{name}</p>
-        <p className="text-xs text-slate-400">Room {room ?? "—"}</p>
+        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{name}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">Room {room ?? "—"}</p>
       </div>
       <Badge tone={tone === "green" ? "green" : "amber"}>{kind}</Badge>
     </li>
@@ -432,9 +432,9 @@ function QuickAction({
   tone: "blue" | "green" | "amber" | "brand";
 }) {
   const toneClasses: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600 hover:bg-blue-100",
-    green: "bg-green-50 text-green-600 hover:bg-green-100",
-    amber: "bg-amber-50 text-amber-600 hover:bg-amber-100",
+    blue: "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:bg-blue-500/15",
+    green: "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-100",
+    amber: "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:bg-amber-500/15",
     brand: "bg-brand-50 text-brand-600 hover:bg-brand-100",
   };
   return (

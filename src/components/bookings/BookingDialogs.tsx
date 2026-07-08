@@ -71,21 +71,21 @@ export function BookingDetailDialog({
 
         {booking.notes && (
           <div>
-            <p className="text-xs font-medium uppercase text-slate-400">Notes</p>
-            <p className="mt-1 text-sm text-slate-700">{booking.notes}</p>
+            <p className="text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Notes</p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{booking.notes}</p>
           </div>
         )}
 
         {addOns.length > 0 && (
           <div>
-            <p className="mb-2 text-xs font-medium uppercase text-slate-400">Services & Add-ons</p>
+            <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Services & Add-ons</p>
             <ul className="space-y-1.5">
               {addOns.map((a) => (
-                <li key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                  <span className="text-slate-700">
+                <li key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
+                  <span className="text-slate-700 dark:text-slate-300">
                     {a.name} {a.quantity > 1 ? `× ${a.quantity}` : ""}
                   </span>
-                  <span className="font-medium text-slate-900">{formatCurrency(a.unit_price * a.quantity)}</span>
+                  <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(a.unit_price * a.quantity)}</span>
                 </li>
               ))}
             </ul>
@@ -93,18 +93,18 @@ export function BookingDetailDialog({
         )}
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase text-slate-400">Payment History</p>
+          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Payment History</p>
           {transactions.length === 0 ? (
-            <p className="text-sm text-slate-400">No payments recorded yet.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">No payments recorded yet.</p>
           ) : (
             <ul className="space-y-2">
               {transactions.map((t) => (
-                <li key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                <li key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
                   <div>
-                    <p className="font-medium text-slate-800 capitalize">{t.transaction_type} · {PAYMENT_METHOD_LABELS[t.payment_method]}</p>
-                    <p className="text-xs text-slate-400">{formatDateTime(t.created_at)}</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-200 capitalize">{t.transaction_type} · {PAYMENT_METHOD_LABELS[t.payment_method]}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formatDateTime(t.created_at)}</p>
                   </div>
-                  <p className="font-semibold text-slate-900">{formatCurrency(t.amount)}</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(t.amount)}</p>
                 </li>
               ))}
             </ul>
@@ -118,8 +118,8 @@ export function BookingDetailDialog({
 function Info({ label, value }: { label: string; value?: string }) {
   return (
     <div>
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className="font-medium text-slate-800">{value ?? "—"}</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="font-medium text-slate-800 dark:text-slate-200">{value ?? "—"}</p>
     </div>
   );
 }
@@ -297,7 +297,7 @@ export function CheckoutDialog({
   return (
     <Dialog open={!!booking} onClose={onClose} title="Confirm Checkout" description={booking.booking_number} className="max-w-sm">
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           {booking.guest?.full_name} · Room {booking.room?.room_number}
         </p>
 
@@ -306,7 +306,7 @@ export function CheckoutDialog({
             <div>
               <Label>Collect Remaining Payment</Label>
               <Input type="number" min={0} max={booking.remaining_balance} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
-              <p className="mt-1 text-xs text-slate-400">Outstanding balance: {formatCurrency(booking.remaining_balance)}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Outstanding balance: {formatCurrency(booking.remaining_balance)}</p>
             </div>
             {amount > 0 && (
               <div>
@@ -322,7 +322,7 @@ export function CheckoutDialog({
             )}
           </>
         ) : (
-          <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">Fully paid — no balance due.</p>
+          <p className="rounded-lg bg-green-50 dark:bg-green-500/10 px-3 py-2 text-sm text-green-700">Fully paid — no balance due.</p>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
@@ -390,8 +390,8 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
     <Dialog open={!!booking} onClose={onClose} title="Invoice" className="max-w-md">
       <div id="invoice-print" className="space-y-4 text-sm">
         <div className="text-center">
-          <p className="text-lg font-semibold text-slate-900">Jikmis Apartment</p>
-          <p className="text-slate-500">Booking Invoice</p>
+          <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Jikmis Apartment</p>
+          <p className="text-slate-500 dark:text-slate-400">Booking Invoice</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Info label="Booking #" value={booking.booking_number} />
@@ -403,21 +403,21 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
           <Info label="Check-in" value={formatDate(booking.check_in)} />
           <Info label="Check-out" value={formatDate(booking.check_out)} />
         </div>
-        <div className="border-t border-dashed border-slate-200 pt-3 space-y-1">
+        <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-3 space-y-1">
           <div className="flex justify-between">
-            <span className="text-slate-500">Total Amount</span>
+            <span className="text-slate-500 dark:text-slate-400">Total Amount</span>
             <span className="font-medium">{formatCurrency(booking.total_amount)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Amount Paid</span>
+            <span className="text-slate-500 dark:text-slate-400">Amount Paid</span>
             <span className="font-medium">{formatCurrency(booking.advance_paid)}</span>
           </div>
-          <div className="flex justify-between text-base font-semibold text-slate-900">
+          <div className="flex justify-between text-base font-semibold text-slate-900 dark:text-slate-100">
             <span>Balance Due</span>
             <span>{formatCurrency(booking.remaining_balance)}</span>
           </div>
         </div>
-        <p className="text-center text-xs text-slate-400">Thank you for staying with us!</p>
+        <p className="text-center text-xs text-slate-400 dark:text-slate-500">Thank you for staying with us!</p>
       </div>
       <div className="mt-5 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={onClose}>

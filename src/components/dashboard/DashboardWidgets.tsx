@@ -25,10 +25,10 @@ import { cn, formatCurrency } from "@/lib/utils";
 // Stat card with optional trend + sparkline
 // ---------------------------------------------------------------------------
 const TONE_MAP = {
-  blue: { bg: "bg-blue-50", text: "text-blue-600", stroke: "#2563eb", fill: "#dbeafe" },
-  green: { bg: "bg-green-50", text: "text-green-600", stroke: "#16a34a", fill: "#dcfce7" },
-  amber: { bg: "bg-amber-50", text: "text-amber-600", stroke: "#d97706", fill: "#fef3c7" },
-  red: { bg: "bg-red-50", text: "text-red-600", stroke: "#dc2626", fill: "#fee2e2" },
+  blue: { bg: "bg-blue-50 dark:bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", stroke: "#2563eb", fill: "#dbeafe" },
+  green: { bg: "bg-green-50 dark:bg-green-500/10", text: "text-green-600 dark:text-green-400", stroke: "#16a34a", fill: "#dcfce7" },
+  amber: { bg: "bg-amber-50 dark:bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", stroke: "#d97706", fill: "#fef3c7" },
+  red: { bg: "bg-red-50 dark:bg-red-500/10", text: "text-red-600 dark:text-red-400", stroke: "#dc2626", fill: "#fee2e2" },
   brand: { bg: "bg-brand-50", text: "text-brand-600", stroke: "#2563eb", fill: "#dbeafe" },
 } as const;
 
@@ -58,7 +58,7 @@ export function StatCard({
           <span
             className={cn(
               "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium",
-              trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+              trend >= 0 ? "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
             )}
           >
             {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
@@ -66,9 +66,9 @@ export function StatCard({
           </span>
         )}
       </div>
-      <p className="mt-3 text-xs font-medium text-slate-500">{label}</p>
-      <p className="text-xl font-semibold text-slate-900 sm:text-2xl">{value}</p>
-      {subtext && <p className="mt-0.5 text-xs text-slate-400">{subtext}</p>}
+      <p className="mt-3 text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 sm:text-2xl">{value}</p>
+      {subtext && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{subtext}</p>}
       {sparkline && sparkline.length > 1 && (
         <div className="mt-2 h-10">
           <ResponsiveContainer width="100%" height="100%">
@@ -113,8 +113,8 @@ export function BookingStatusDonut({ data }: { data: { name: string; value: numb
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-2xl font-semibold text-slate-900">{total}</p>
-          <p className="text-xs text-slate-400">Total</p>
+          <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{total}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Total</p>
         </div>
       </div>
       <div className="w-full space-y-2">
@@ -122,9 +122,9 @@ export function BookingStatusDonut({ data }: { data: { name: string; value: numb
           <div key={d.name} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[d.name] ?? "#cbd5e1" }} />
-              <span className="text-slate-600">{d.name}</span>
+              <span className="text-slate-600 dark:text-slate-400">{d.name}</span>
             </div>
-            <span className="font-medium text-slate-800">
+            <span className="font-medium text-slate-800 dark:text-slate-200">
               {total > 0 ? Math.round((d.value / total) * 100) : 0}% ({d.value})
             </span>
           </div>
@@ -172,18 +172,18 @@ export function OccupancyGauge({ occupied, total }: { occupied: number; total: n
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-3xl font-semibold text-slate-900">{pct}%</p>
-          <p className="text-xs text-slate-400">Occupied</p>
+          <p className="text-3xl font-semibold text-slate-900 dark:text-slate-100">{pct}%</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Occupied</p>
         </div>
       </div>
       <div className="mt-3 flex gap-6 text-center">
         <div>
-          <p className="text-base font-semibold text-slate-900">{occupied}</p>
-          <p className="text-xs text-slate-400">Occupied Rooms</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{occupied}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Occupied Rooms</p>
         </div>
         <div>
-          <p className="text-base font-semibold text-slate-900">{total - occupied}</p>
-          <p className="text-xs text-slate-400">Available Rooms</p>
+          <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{total - occupied}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Available Rooms</p>
         </div>
       </div>
     </div>
