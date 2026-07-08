@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer } from "lucide-react";
+import { Printer, Building2 } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -384,40 +384,109 @@ export function DeleteBookingDialog({
 // Printable invoice
 // ---------------------------------------------------------------------------
 export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelations | null; onClose: () => void }) {
+  const [addOns, setAddOns] = React.useState<BookingService[]>([]);
+
+  React.useEffect(() => {
+    if (!booking) return;
+    supabase
+      .from("booking_services")
+      .select("*")
+      .eq("booking_id", booking.id)
+      .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
+  }, [booking]);
+
   if (!booking) return null;
 
+  const addOnsTotal = addOns.reduce((sum, a) => sum + a.unit_price * a.quantity, 0);
+  const roomCharge = Math.max(booking.total_amount - addOnsTotal, 0);
+  const ratePerNight = booking.nights > 0 ? roomCharge / booking.nights : roomCharge;
+
   return (
-    <Dialog open={!!booking} onClose={onClose} title="Invoice" className="max-w-md">
-      <div id="invoice-print" className="space-y-4 text-sm">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Jikmis Apartment</p>
-          <p className="text-slate-500 dark:text-slate-400">Booking Invoice</p>
+    <Dialog open={!!booking} onClose={onClose} title="Invoice" className="max-w-lg">
+      <div id="invoice-print" className="space-y-5 text-sm">
+        {/* Letterhead */}
+        <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-lg font-semibold leading-tight text-slate-900">Jikmis Apartment</p>
+              <p className="text-xs text-slate-400">Front Desk · Booking Invoice</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-slate-400">Invoice For</p>
+            <p className="font-semibold text-slate-900">{booking.booking_number}</p>
+            <p className="text-xs text-slate-400">{formatDate(booking.created_at)}</p>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Info label="Booking #" value={booking.booking_number} />
-          <Info label="Date" value={formatDate(booking.created_at)} />
-          <Info label="Guest" value={booking.guest?.full_name} />
-          <Info label="Phone" value={booking.guest?.phone ?? "—"} />
-          <Info label="Room" value={`${booking.room?.room_number} (${booking.room?.room_type})`} />
-          <Info label="Nights" value={String(booking.nights)} />
-          <Info label="Check-in" value={formatDate(booking.check_in)} />
-          <Info label="Check-out" value={formatDate(booking.check_out)} />
+
+        {/* Billed to / stay details */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Billed To</p>
+            <Info label="Guest" value={booking.guest?.full_name} />
+            <div className="mt-2">
+              <Info label="Phone" value={booking.guest?.phone ?? "—"} />
+            </div>
+          </div>
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Stay Details</p>
+            <Info label="Room" value={`${booking.room?.room_number} · ${booking.room?.room_type}`} />
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Info label="Check-in" value={formatDate(booking.check_in)} />
+              <Info label="Check-out" value={formatDate(booking.check_out)} />
+            </div>
+          </div>
         </div>
-        <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-3 space-y-1">
+
+        {/* Itemized charges */}
+        <div className="overflow-hidden rounded-xl border border-slate-100">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <th className="px-3 py-2">Description</th>
+                <th className="px-3 py-2 text-center">Qty</th>
+                <th className="px-3 py-2 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr>
+                <td className="px-3 py-2 text-slate-700">
+                  Room Charge <span className="text-xs text-slate-400">({formatCurrency(ratePerNight)}/night)</span>
+                </td>
+                <td className="px-3 py-2 text-center text-slate-500">{booking.nights}</td>
+                <td className="px-3 py-2 text-right font-medium text-slate-800">{formatCurrency(roomCharge)}</td>
+              </tr>
+              {addOns.map((a) => (
+                <tr key={a.id}>
+                  <td className="px-3 py-2 text-slate-700">{a.name}</td>
+                  <td className="px-3 py-2 text-center text-slate-500">{a.quantity}</td>
+                  <td className="px-3 py-2 text-right font-medium text-slate-800">{formatCurrency(a.unit_price * a.quantity)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Totals */}
+        <div className="space-y-1.5 rounded-xl bg-slate-50 px-4 py-3">
           <div className="flex justify-between">
-            <span className="text-slate-500 dark:text-slate-400">Total Amount</span>
-            <span className="font-medium">{formatCurrency(booking.total_amount)}</span>
+            <span className="text-slate-500">Total Amount</span>
+            <span className="font-medium text-slate-800">{formatCurrency(booking.total_amount)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500 dark:text-slate-400">Amount Paid</span>
-            <span className="font-medium">{formatCurrency(booking.advance_paid)}</span>
+            <span className="text-slate-500">Amount Paid</span>
+            <span className="font-medium text-slate-800">{formatCurrency(booking.advance_paid)}</span>
           </div>
-          <div className="flex justify-between text-base font-semibold text-slate-900 dark:text-slate-100">
+          <div className="flex justify-between border-t border-slate-200 pt-1.5 text-base font-semibold text-slate-900">
             <span>Balance Due</span>
-            <span>{formatCurrency(booking.remaining_balance)}</span>
+            <span className="text-brand-600">{formatCurrency(booking.remaining_balance)}</span>
           </div>
         </div>
-        <p className="text-center text-xs text-slate-400 dark:text-slate-500">Thank you for staying with us!</p>
+
+        <p className="text-center text-xs text-slate-400">Thank you for staying with Jikmis Apartment!</p>
       </div>
       <div className="mt-5 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={onClose}>

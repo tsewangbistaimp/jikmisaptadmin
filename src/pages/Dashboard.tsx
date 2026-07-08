@@ -223,7 +223,7 @@ export default function Dashboard() {
           label="Total Bookings"
           value={totalBookingsAllTime}
           icon={<ClipboardList className="h-5 w-5" />}
-          tone="purple"
+          tone="brand"
           trend={monthOverMonthChange(bookingsThisMonth, bookingsLastMonth)}
           sparkline={bookingsSpark}
         />
@@ -324,8 +324,8 @@ export default function Dashboard() {
             <EmptyState title="Nothing today" />
           ) : (
             <div className="flex items-center justify-around">
-              <MiniPercentDonut label="Check In" pct={checkInPct} color="#7c3aed" />
-              <MiniPercentDonut label="Check Out" pct={checkOutPct} color="#f59e0b" />
+              <MiniPercentDonut label="Check In" pct={checkInPct} color="#df5830" />
+              <MiniPercentDonut label="Check Out" pct={checkOutPct} color="#0ea5e9" />
             </div>
           )}
         </Card>

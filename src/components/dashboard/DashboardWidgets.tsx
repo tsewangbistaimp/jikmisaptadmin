@@ -27,7 +27,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 // badge, large number, label below).
 // ---------------------------------------------------------------------------
 const TONE_MAP = {
-  purple: { card: "bg-violet-100", badge: "bg-white/70 text-violet-600", text: "text-violet-950", sub: "text-violet-700/70", stroke: "#7c3aed", trendBg: "bg-white/60 text-violet-700" },
+  brand: { card: "bg-orange-100", badge: "bg-white/70 text-orange-700", text: "text-orange-950", sub: "text-orange-800/70", stroke: "#df5830", trendBg: "bg-white/60 text-orange-800" },
   green: { card: "bg-emerald-100", badge: "bg-white/70 text-emerald-600", text: "text-emerald-950", sub: "text-emerald-700/70", stroke: "#059669", trendBg: "bg-white/60 text-emerald-700" },
   amber: { card: "bg-amber-100", badge: "bg-white/70 text-amber-600", text: "text-amber-950", sub: "text-amber-700/70", stroke: "#d97706", trendBg: "bg-white/60 text-amber-700" },
   rose: { card: "bg-rose-100", badge: "bg-white/70 text-rose-600", text: "text-rose-950", sub: "text-rose-700/70", stroke: "#e11d48", trendBg: "bg-white/60 text-rose-700" },
@@ -89,7 +89,7 @@ export function StatCard({
 // Booking status donut
 // ---------------------------------------------------------------------------
 const STATUS_COLORS: Record<string, string> = {
-  Confirmed: "#7c3aed",
+  Confirmed: "#df5830",
   "Checked In": "#059669",
   "Checked Out": "#94a3b8",
   Cancelled: "#e11d48",
@@ -146,8 +146,8 @@ export function ReservationsChart({ data }: { data: { label: string; bookings: n
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Line type="monotone" dataKey="bookings" name="Bookings" stroke="#7c3aed" strokeWidth={2.5} dot={false} />
-          <Line type="monotone" dataKey="checkIns" name="Check Ins" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
+          <Line type="monotone" dataKey="bookings" name="Bookings" stroke="#df5830" strokeWidth={2.5} dot={false} />
+          <Line type="monotone" dataKey="checkIns" name="Check Ins" stroke="#0ea5e9" strokeWidth={2.5} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -159,7 +159,7 @@ export function ReservationsChart({ data }: { data: { label: string; bookings: n
 // ---------------------------------------------------------------------------
 export function OccupancyGauge({ occupied, total }: { occupied: number; total: number }) {
   const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
-  const data = [{ name: "occupancy", value: pct, fill: "#7c3aed" }];
+  const data = [{ name: "occupancy", value: pct, fill: "#df5830" }];
   return (
     <div className="flex flex-col items-center">
       <div className="relative h-44 w-44">
@@ -225,7 +225,7 @@ export function RevenueBarChart({ data }: { data: { label: string; total: number
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Bar dataKey="total" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="total" fill="#df5830" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
