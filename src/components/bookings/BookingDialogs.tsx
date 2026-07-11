@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer, Building2 } from "lucide-react";
+import { Printer, Building2, Wallet, ShieldCheck } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,33 +12,42 @@ import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { paymentStatusTone, bookingStatusTone } from "@/lib/badge-tones";
 import type { BookingService, BookingWithRelations, PaymentMethod, Transaction } from "@/lib/database.types";
 
+type TransactionWithStaff = Transaction & { staff: { full_name: string } | null };
+
 // ---------------------------------------------------------------------------
 // View booking details + payment history
 // ---------------------------------------------------------------------------
 export function BookingDetailDialog({
   booking,
   onClose,
+  onRecordPayment,
 }: {
   booking: BookingWithRelations | null;
   onClose: () => void;
+  onRecordPayment?: (booking: BookingWithRelations) => void;
 }) {
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [transactions, setTransactions] = React.useState<TransactionWithStaff[]>([]);
   const [addOns, setAddOns] = React.useState<BookingService[]>([]);
 
-  React.useEffect(() => {
+  const reloadTransactions = React.useCallback(() => {
     if (!booking) return;
     supabase
       .from("transactions")
-      .select("*")
+      .select("*, staff:profiles(full_name)")
       .eq("booking_id", booking.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setTransactions((data as Transaction[]) ?? []));
+      .then(({ data }) => setTransactions((data as TransactionWithStaff[]) ?? []));
+  }, [booking]);
+
+  React.useEffect(() => {
+    if (!booking) return;
+    reloadTransactions();
     supabase
       .from("booking_services")
       .select("*")
       .eq("booking_id", booking.id)
       .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
-  }, [booking]);
+  }, [booking, reloadTransactions]);
 
   if (!booking) return null;
 
@@ -93,7 +102,17 @@ export function BookingDetailDialog({
         )}
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Payment History</p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Payment History</p>
+            {onRecordPayment && booking.remaining_balance > 0 && booking.booking_status !== "cancelled" && (
+              <button
+                onClick={() => onRecordPayment(booking)}
+                className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700"
+              >
+                <Wallet className="h-3.5 w-3.5" /> Record Payment
+              </button>
+            )}
+          </div>
           {transactions.length === 0 ? (
             <p className="text-sm text-slate-400 dark:text-slate-500">No payments recorded yet.</p>
           ) : (
@@ -102,7 +121,10 @@ export function BookingDetailDialog({
                 <li key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
                   <div>
                     <p className="font-medium text-slate-800 dark:text-slate-200 capitalize">{t.transaction_type} · {PAYMENT_METHOD_LABELS[t.payment_method]}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{formatDateTime(t.created_at)}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {formatDateTime(t.created_at)}
+                      {t.staff?.full_name ? ` · recorded by ${t.staff.full_name}` : ""}
+                    </p>
                   </div>
                   <p className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(t.amount)}</p>
                 </li>
@@ -341,6 +363,124 @@ export function CheckoutDialog({
 }
 
 // ---------------------------------------------------------------------------
+// Record an additional (due) payment — usable any time, not just checkout.
+// The remaining-balance check and all totals are recalculated on the server
+// inside the record_payment() Postgres function, so a client can't submit an
+// amount that overpays the booking even by editing frontend code.
+// ---------------------------------------------------------------------------
+export function RecordPaymentDialog({
+  booking,
+  onClose,
+  onDone,
+}: {
+  booking: BookingWithRelations | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = React.useState(0);
+  const [method, setMethod] = React.useState<PaymentMethod>("cash");
+  const [notes, setNotes] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (booking) {
+      setAmount(booking.remaining_balance);
+      setNotes("");
+      setError(null);
+    }
+  }, [booking]);
+
+  if (!booking) return null;
+
+  const fullyPaid = booking.remaining_balance <= 0;
+
+  const submit = async () => {
+    setError(null);
+    if (!amount || amount <= 0) {
+      setError("Enter an amount greater than zero");
+      return;
+    }
+    if (amount > booking.remaining_balance) {
+      setError(`Amount can't exceed the remaining balance of ${formatCurrency(booking.remaining_balance)}`);
+      return;
+    }
+    setSaving(true);
+    const { error: rpcError } = await supabase.rpc("record_payment", {
+      p_booking_id: booking.id,
+      p_amount: amount,
+      p_payment_method: method,
+      p_notes: notes || null,
+    });
+    setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    toast.success(`Payment of ${formatCurrency(amount)} recorded`);
+    onDone();
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!booking} onClose={onClose} title="Record Payment" description={booking.booking_number} className="max-w-sm">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          {booking.guest?.full_name} · Room {booking.room?.room_number}
+        </p>
+
+        {fullyPaid ? (
+          <p className="rounded-lg bg-green-50 dark:bg-green-500/10 px-3 py-2 text-sm text-green-700">Fully paid — no balance due.</p>
+        ) : (
+          <>
+            <div>
+              <Label>Amount</Label>
+              <Input
+                type="number"
+                min={0}
+                max={booking.remaining_balance}
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+              />
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Outstanding balance: {formatCurrency(booking.remaining_balance)}
+              </p>
+            </div>
+            <div>
+              <Label>Payment Method</Label>
+              <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+                {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label>Notes (optional)</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Paid remaining balance in cash" />
+            </div>
+            <FieldError message={error ?? undefined} />
+          </>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
+            {fullyPaid ? "Close" : "Cancel"}
+          </Button>
+          {!fullyPaid && (
+            <Button onClick={submit} loading={saving}>
+              <Wallet className="h-4 w-4" /> Record Payment
+            </Button>
+          )}
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Delete confirmation
 // ---------------------------------------------------------------------------
 export function DeleteBookingDialog({
@@ -352,15 +492,66 @@ export function DeleteBookingDialog({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const { isAdmin } = useAuth();
   const [loading, setLoading] = React.useState(false);
+  const [code, setCode] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setCode("");
+    setError(null);
+  }, [booking]);
+
   if (!booking) return null;
 
-  const confirmDelete = async () => {
+  // Admins can delete directly — the "bookings_delete" RLS policy already
+  // restricts this to admins, and no authorization code is needed for them.
+  if (isAdmin) {
+    const confirmDelete = async () => {
+      setLoading(true);
+      const { error: delError } = await supabase.from("bookings").delete().eq("id", booking.id);
+      setLoading(false);
+      if (delError) {
+        toast.error(delError.message);
+        return;
+      }
+      toast.success("Booking deleted");
+      onDeleted();
+      onClose();
+    };
+
+    return (
+      <ConfirmDialog
+        open={!!booking}
+        onClose={onClose}
+        onConfirm={confirmDelete}
+        title={`Delete ${booking.booking_number}?`}
+        description="This will permanently remove the booking and its payment records. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={loading}
+      />
+    );
+  }
+
+  // Receptionists must supply a valid, unexpired, unused code that an admin
+  // generated for them. Verification happens entirely server-side inside
+  // delete_booking_with_code() — this component never performs the delete
+  // itself, so there's no way to bypass the check from the frontend.
+  const confirmWithCode = async () => {
+    setError(null);
+    if (!code.trim()) {
+      setError("Enter the authorization code your admin gave you");
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.from("bookings").delete().eq("id", booking.id);
+    const { error: rpcError } = await supabase.rpc("delete_booking_with_code", {
+      p_booking_id: booking.id,
+      p_code: code.trim(),
+    });
     setLoading(false);
-    if (error) {
-      toast.error(error.message);
+    if (rpcError) {
+      setError(rpcError.message);
       return;
     }
     toast.success("Booking deleted");
@@ -369,16 +560,36 @@ export function DeleteBookingDialog({
   };
 
   return (
-    <ConfirmDialog
-      open={!!booking}
-      onClose={onClose}
-      onConfirm={confirmDelete}
-      title={`Delete ${booking.booking_number}?`}
-      description="This will permanently remove the booking and its payment records. This cannot be undone."
-      confirmLabel="Delete"
-      destructive
-      loading={loading}
-    />
+    <Dialog open={!!booking} onClose={onClose} title={`Delete ${booking.booking_number}?`} className="max-w-sm">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          This will permanently remove the booking and its payment records. Ask your admin for a temporary
+          authorization code to continue.
+        </p>
+        <div>
+          <Label>Authorization Code</Label>
+          <div className="relative">
+            <ShieldCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              className="pl-9 tracking-widest"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="6-digit code"
+              maxLength={6}
+            />
+          </div>
+        </div>
+        <FieldError message={error ?? undefined} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={confirmWithCode} loading={loading}>
+            Delete Booking
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 

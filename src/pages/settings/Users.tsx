@@ -2,7 +2,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, KeyRound, Ban, CheckCircle2, Trash2 } from "lucide-react";
+import { Plus, KeyRound, Ban, CheckCircle2, Trash2, ShieldCheck, RefreshCw, ScrollText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +12,9 @@ import { Input, Label, Select, FieldError } from "@/components/ui/input";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { initials, getFunctionErrorMessage } from "@/lib/utils";
+import { initials, getFunctionErrorMessage, formatDateTime } from "@/lib/utils";
 import { staffFormSchema, type StaffFormValues } from "@/lib/schemas";
-import type { Profile } from "@/lib/database.types";
+import type { Profile, AuditLog } from "@/lib/database.types";
 
 export default function UsersSettings() {
   const { profile: currentUser } = useAuth();
@@ -166,11 +166,127 @@ export default function UsersSettings() {
         </div>
       </Card>
 
+      <AuthorizationCard staff={staff} />
+
       <CreateStaffDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={load} />
       <ResetPasswordDialog profile={resetting} onClose={() => setResetting(null)} />
       <ToggleStatusDialog profile={statusTarget} onClose={() => setStatusTarget(null)} onDone={load} />
       <DeleteStaffDialog profile={deleting} onClose={() => setDeleting(null)} onDone={load} />
     </div>
+  );
+}
+
+function AuthorizationCard({ staff }: { staff: Profile[] }) {
+  const nameById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    staff.forEach((s) => map.set(s.id, s.full_name));
+    return map;
+  }, [staff]);
+
+  const [code, setCode] = React.useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = React.useState<number | null>(null);
+  const [secondsLeft, setSecondsLeft] = React.useState(0);
+  const [generating, setGenerating] = React.useState(false);
+  const [logs, setLogs] = React.useState<AuditLog[]>([]);
+  const [logsLoading, setLogsLoading] = React.useState(true);
+
+  const loadLogs = React.useCallback(async () => {
+    setLogsLoading(true);
+    const { data } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(15);
+    setLogs((data as AuditLog[]) ?? []);
+    setLogsLoading(false);
+  }, []);
+
+  React.useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
+
+  React.useEffect(() => {
+    if (!expiresAt) return;
+    const tick = () => setSecondsLeft(Math.max(0, Math.round((expiresAt - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  const generate = async () => {
+    setGenerating(true);
+    const { data, error } = await supabase.rpc("generate_auth_code");
+    setGenerating(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row?.code) {
+      toast.error("Could not generate a code");
+      return;
+    }
+    setCode(row.code);
+    setExpiresAt(new Date(row.expires_at).getTime());
+    toast.success("New authorization code generated");
+    loadLogs();
+  };
+
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(1, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
+  const expired = expiresAt !== null && secondsLeft <= 0;
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-slate-100">
+            <ShieldCheck className="h-4.5 w-4.5 text-brand-500" /> Temporary Authorization
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Generate a short-lived code to let a receptionist delete a booking.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={generate} loading={generating}>
+          <RefreshCw className="h-4 w-4" /> Generate Code
+        </Button>
+      </div>
+
+      {code && (
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
+          <div>
+            <p className="text-2xl font-bold tracking-[0.3em] text-slate-900 dark:text-slate-100">{code}</p>
+            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Share this with the receptionist. Single-use.</p>
+          </div>
+          <Badge tone={expired ? "red" : "green"}>{expired ? "Expired" : `${mm}:${ss}`}</Badge>
+        </div>
+      )}
+
+      <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
+          <ScrollText className="h-3.5 w-3.5" /> Recent Authorization Activity
+        </p>
+        {logsLoading ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">Loading…</p>
+        ) : logs.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">No authorized actions yet.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {logs.map((l) => (
+              <li key={l.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                <div>
+                  <p className="text-slate-700 dark:text-slate-300">
+                    {l.action === "delete_booking" ? "Deleted booking" : l.action}
+                    {typeof l.details?.booking_number === "string" ? ` ${String(l.details?.booking_number)}` : ""}
+                    {" · by "}
+                    {(l.performed_by && nameById.get(l.performed_by)) ?? "Unknown"}
+                    {" · authorized by "}
+                    {(l.admin_id && nameById.get(l.admin_id)) ?? "Unknown"}
+                  </p>
+                </div>
+                <p className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{formatDateTime(l.created_at)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
   );
 }
 

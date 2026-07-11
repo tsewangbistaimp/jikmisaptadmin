@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown } from "lucide-react";
+import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { bookingStatusTone, paymentStatusTone } from "@/lib/badge-tones";
 import { BOOKING_STATUS_LABELS } from "@/lib/constants";
@@ -19,6 +18,7 @@ import {
   CheckoutDialog,
   DeleteBookingDialog,
   InvoiceDialog,
+  RecordPaymentDialog,
 } from "@/components/bookings/BookingDialogs";
 
 const PAGE_SIZE = 10;
@@ -26,7 +26,6 @@ const PAGE_SIZE = 10;
 type SortKey = "created_at" | "check_in" | "check_out" | "total_amount";
 
 export default function Bookings() {
-  const { isAdmin } = useAuth();
   const [searchParams] = useSearchParams();
   const [bookings, setBookings] = React.useState<BookingWithRelations[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -41,6 +40,7 @@ export default function Bookings() {
   const [checkingOut, setCheckingOut] = React.useState<BookingWithRelations | null>(null);
   const [deleting, setDeleting] = React.useState<BookingWithRelations | null>(null);
   const [invoicing, setInvoicing] = React.useState<BookingWithRelations | null>(null);
+  const [paying, setPaying] = React.useState<BookingWithRelations | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -235,11 +235,14 @@ export default function Bookings() {
                           <IconButton title="Invoice" onClick={() => setInvoicing(b)}>
                             <Receipt className="h-4 w-4" />
                           </IconButton>
-                          {isAdmin && (
-                            <IconButton title="Delete" onClick={() => setDeleting(b)} destructive>
-                              <Trash2 className="h-4 w-4" />
+                          {b.remaining_balance > 0 && b.booking_status !== "cancelled" && (
+                            <IconButton title="Record Payment" onClick={() => setPaying(b)}>
+                              <Wallet className="h-4 w-4" />
                             </IconButton>
                           )}
+                          <IconButton title="Delete" onClick={() => setDeleting(b)} destructive>
+                            <Trash2 className="h-4 w-4" />
+                          </IconButton>
                         </div>
                       </TD>
                     </TR>
@@ -306,11 +309,14 @@ export default function Bookings() {
                     <IconButton title="Invoice" onClick={() => setInvoicing(b)}>
                       <Receipt className="h-4 w-4" />
                     </IconButton>
-                    {isAdmin && (
-                      <IconButton title="Delete" onClick={() => setDeleting(b)} destructive>
-                        <Trash2 className="h-4 w-4" />
+                    {b.remaining_balance > 0 && b.booking_status !== "cancelled" && (
+                      <IconButton title="Record Payment" onClick={() => setPaying(b)}>
+                        <Wallet className="h-4 w-4" />
                       </IconButton>
                     )}
+                    <IconButton title="Delete" onClick={() => setDeleting(b)} destructive>
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
                   </div>
                 </div>
               ))}
@@ -333,11 +339,19 @@ export default function Bookings() {
         )}
       </Card>
 
-      <BookingDetailDialog booking={viewing} onClose={() => setViewing(null)} />
+      <BookingDetailDialog
+        booking={viewing}
+        onClose={() => setViewing(null)}
+        onRecordPayment={(b) => {
+          setViewing(null);
+          setPaying(b);
+        }}
+      />
       <EditBookingDialog booking={editing} onClose={() => setEditing(null)} onSaved={load} />
       <CheckoutDialog booking={checkingOut} onClose={() => setCheckingOut(null)} onDone={load} />
       <DeleteBookingDialog booking={deleting} onClose={() => setDeleting(null)} onDeleted={load} />
       <InvoiceDialog booking={invoicing} onClose={() => setInvoicing(null)} />
+      <RecordPaymentDialog booking={paying} onClose={() => setPaying(null)} onDone={load} />
     </div>
   );
 }

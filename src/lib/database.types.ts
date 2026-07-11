@@ -107,6 +107,27 @@ export interface TransactionWithRelations extends Transaction {
   guest: Pick<Guest, "id" | "full_name"> | null;
 }
 
+export interface AuthCode {
+  id: string;
+  code: string;
+  created_by: string;
+  expires_at: string;
+  used_at: string | null;
+  used_by: string | null;
+  created_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  booking_id: string | null;
+  performed_by: string | null;
+  admin_id: string | null;
+  auth_code_id: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
 // Minimal Supabase `Database` generic used by the typed client.
 // Kept loose (not table-by-table) so the app compiles without the CLI-generated file.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
