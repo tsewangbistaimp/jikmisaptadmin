@@ -231,3 +231,106 @@ export function RevenueBarChart({ data }: { data: { label: string; total: number
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Monthly Income vs Expenses — grouped bar chart
+// ---------------------------------------------------------------------------
+export function IncomeVsExpenseChart({ data }: { data: { label: string; income: number; expenses: number }[] }) {
+  return (
+    <div className="h-56 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+          <Tooltip
+            formatter={(v) => formatCurrency(Number(v))}
+            contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+            labelStyle={{ fontWeight: 600, color: "#0f172a" }}
+          />
+          <Bar dataKey="income" name="Income" fill="#059669" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="expenses" name="Expenses" fill="#e11d48" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="mt-2 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" /> Income
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-rose-600" /> Expenses
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Monthly expense trend — area chart
+// ---------------------------------------------------------------------------
+export function ExpenseTrendChart({ data }: { data: { label: string; total: number }[] }) {
+  return (
+    <div className="h-56 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="expense-trend" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#e11d48" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="#e11d48" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+          <Tooltip
+            formatter={(v) => formatCurrency(Number(v))}
+            contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+            labelStyle={{ fontWeight: 600, color: "#0f172a" }}
+          />
+          <Area type="monotone" dataKey="total" name="Expenses" stroke="#e11d48" strokeWidth={2.5} fill="url(#expense-trend)" />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Expense category breakdown — donut, generic palette (category names vary
+// since admins can add custom categories, unlike the fixed booking statuses)
+// ---------------------------------------------------------------------------
+const CATEGORY_PALETTE = ["#df5830", "#0284c7", "#059669", "#d97706", "#7c3aed", "#e11d48", "#0891b2", "#65a30d", "#c026d3", "#475569"];
+
+export function ExpenseCategoryDonut({ data }: { data: { name: string; value: number }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <div className="flex flex-col items-center gap-4 sm:flex-row">
+      <div className="relative h-40 w-40 shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={data} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} strokeWidth={0}>
+              {data.map((d, i) => (
+                <Cell key={d.name} fill={CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(total)}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Total</p>
+        </div>
+      </div>
+      <div className="w-full space-y-2 max-h-40 overflow-y-auto scrollbar-thin pr-1">
+        {data.map((d, i) => (
+          <div key={d.name} className="flex items-center justify-between text-sm">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length] }} />
+              <span className="truncate text-slate-600 dark:text-slate-400">{d.name}</span>
+            </div>
+            <span className="shrink-0 font-medium text-slate-800 dark:text-slate-200">
+              {total > 0 ? Math.round((d.value / total) * 100) : 0}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

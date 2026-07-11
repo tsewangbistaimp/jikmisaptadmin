@@ -130,6 +130,51 @@ export interface AuditLog {
   created_at: string;
 }
 
+export type ExpensePaymentMethod = "cash" | "bank_transfer" | "online_payment";
+export type ExpenseStatus = "paid" | "pending";
+export type ExpensePriority = "low" | "medium" | "high";
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  is_default: boolean;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  title: string;
+  category_id: string;
+  amount: number;
+  date: string;
+  payment_method: ExpensePaymentMethod;
+  paid_by: string | null;
+  description: string | null;
+  receipt_url: string | null;
+  status: ExpenseStatus;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpenseWithCategory extends Expense {
+  category: Pick<ExpenseCategory, "id" | "name"> | null;
+}
+
+export interface ExpenseReminder {
+  id: string;
+  title: string;
+  due_date: string | null;
+  amount: number | null;
+  priority: ExpensePriority;
+  is_completed: boolean;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Minimal Supabase `Database` generic used by the typed client.
 // Kept loose (not table-by-table) so the app compiles without the CLI-generated file.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

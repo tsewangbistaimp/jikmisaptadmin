@@ -106,6 +106,24 @@ export function countByMonth<T>(items: T[], dateField: (item: T) => string, mont
   return buckets.map((b) => ({ label: b.label, count: b.count }));
 }
 
+/** Sum a numeric field per calendar month for the last `months` months. */
+export function sumByMonth<T>(items: T[], dateField: (item: T) => string, valueField: (item: T) => number, months: number) {
+  const now = new Date();
+  const buckets: { year: number; month: number; label: string; total: number }[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString("en-GB", { month: "short" }), total: 0 });
+  }
+  for (const item of items) {
+    const raw = dateField(item);
+    if (!raw) continue;
+    const d = new Date(raw);
+    const bucket = buckets.find((b) => b.year === d.getFullYear() && b.month === d.getMonth());
+    if (bucket) bucket.total += valueField(item);
+  }
+  return buckets.map((b) => ({ label: b.label, total: b.total }));
+}
+
 export function monthOverMonthChange(current: number, previous: number) {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Math.round(((current - previous) / previous) * 100);

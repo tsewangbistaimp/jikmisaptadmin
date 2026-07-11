@@ -11,6 +11,7 @@ const Guests = lazy(() => import("@/pages/Guests"));
 const Rooms = lazy(() => import("@/pages/Rooms"));
 const Services = lazy(() => import("@/pages/Services"));
 const Transactions = lazy(() => import("@/pages/Transactions"));
+const Expenses = lazy(() => import("@/pages/Expenses"));
 const UsersSettings = lazy(() => import("@/pages/settings/Users"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="/rooms" element={<Rooms />} />
           <Route path="/services" element={<Services />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/expenses" element={<Expenses />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/settings/users" element={<UsersSettings />} />

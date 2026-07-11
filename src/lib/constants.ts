@@ -42,3 +42,20 @@ export const ADMIN_ROOM_STATUS_OPTIONS: Record<string, string> = {
   cleaning: "Cleaning",
   maintenance: "Maintenance",
 };
+
+export const EXPENSE_PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: "Cash",
+  bank_transfer: "Bank Transfer",
+  online_payment: "Online Payment",
+};
+
+export const EXPENSE_STATUS_LABELS: Record<string, string> = {
+  paid: "Paid",
+  pending: "Pending",
+};
+
+export const EXPENSE_PRIORITY_LABELS: Record<string, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+};

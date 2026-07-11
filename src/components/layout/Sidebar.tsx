@@ -12,6 +12,7 @@ import {
   Building2,
   LogOut,
   ChevronUp,
+  Receipt,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,7 +41,10 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   },
   {
     label: "Finance",
-    items: [{ to: "/transactions", label: "Transactions", icon: CreditCard }],
+    items: [
+      { to: "/transactions", label: "Transactions", icon: CreditCard },
+      { to: "/expenses", label: "Expenses", icon: Receipt },
+    ],
   },
 ];
 

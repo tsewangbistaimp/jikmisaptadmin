@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   X,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -95,6 +96,7 @@ export function MobileNav() {
             </div>
 
             <MoreLink to="/transactions" label="Transactions" icon={CreditCard} onClick={() => setMoreOpen(false)} />
+            <MoreLink to="/expenses" label="Expenses" icon={Receipt} onClick={() => setMoreOpen(false)} />
             <MoreLink to="/services" label="Services" icon={Sparkles} onClick={() => setMoreOpen(false)} />
             {isAdmin && <MoreLink to="/settings/users" label="Settings & Staff" icon={Settings} onClick={() => setMoreOpen(false)} />}
 

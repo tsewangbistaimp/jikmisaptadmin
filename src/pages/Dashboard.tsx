@@ -13,6 +13,9 @@ import {
   CalendarClock,
   Sparkles as SparklesIcon,
   CreditCard,
+  Receipt,
+  TrendingUp,
+  PiggyBank,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
@@ -28,9 +31,12 @@ import {
   OccupancyGauge,
   RevenueBarChart,
   MiniPercentDonut,
+  IncomeVsExpenseChart,
+  ExpenseTrendChart,
+  ExpenseCategoryDonut,
 } from "@/components/dashboard/DashboardWidgets";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
-import { countByDay, countByWeek, countByMonth, sumByDay, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
+import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
 import type { Room } from "@/lib/database.types";
 
 interface BookingRow {
@@ -54,6 +60,14 @@ interface TransactionRow {
   guest: { full_name: string } | null;
 }
 
+interface ExpenseRow {
+  id: string;
+  amount: number;
+  date: string;
+  status: string;
+  category: { name: string } | null;
+}
+
 type Granularity = "daily" | "weekly" | "monthly";
 
 export default function Dashboard() {
@@ -62,6 +76,7 @@ export default function Dashboard() {
   const [rooms, setRooms] = React.useState<Room[]>([]);
   const [bookings, setBookings] = React.useState<BookingRow[]>([]);
   const [transactions, setTransactions] = React.useState<TransactionRow[]>([]);
+  const [expenses, setExpenses] = React.useState<ExpenseRow[]>([]);
   const [statusCounts, setStatusCounts] = React.useState({ confirmed: 0, checked_in: 0, checked_out: 0, cancelled: 0 });
   const [totalBookingsAllTime, setTotalBookingsAllTime] = React.useState(0);
   const [pendingBalance, setPendingBalance] = React.useState(0);
@@ -75,6 +90,7 @@ export default function Dashboard() {
       roomsRes,
       bookingsRes,
       txRes,
+      expensesRes,
       confirmedRes,
       checkedInRes,
       checkedOutRes,
@@ -95,6 +111,12 @@ export default function Dashboard() {
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(1000),
+      supabase
+        .from("expenses")
+        .select("id, amount, date, status, category:expense_categories(name)")
+        .gte("date", since.slice(0, 10))
+        .order("date", { ascending: false })
+        .limit(1000),
       supabase.from("bookings").select("id", { count: "exact", head: true }).eq("booking_status", "confirmed"),
       supabase.from("bookings").select("id", { count: "exact", head: true }).eq("booking_status", "checked_in"),
       supabase.from("bookings").select("id", { count: "exact", head: true }).eq("booking_status", "checked_out"),
@@ -110,6 +132,7 @@ export default function Dashboard() {
     setRooms((roomsRes.data as Room[]) ?? []);
     setBookings((bookingsRes.data as unknown as BookingRow[]) ?? []);
     setTransactions((txRes.data as unknown as TransactionRow[]) ?? []);
+    setExpenses((expensesRes.data as unknown as ExpenseRow[]) ?? []);
     setStatusCounts({
       confirmed: confirmedRes.count ?? 0,
       checked_in: checkedInRes.count ?? 0,
@@ -159,6 +182,26 @@ export default function Dashboard() {
 
   const revenueThisMonth = transactions.filter((t) => t.created_at.slice(0, 7) === thisMonth).reduce((s, t) => s + Number(t.amount), 0);
   const revenueLastMonth = transactions.filter((t) => t.created_at.slice(0, 7) === lastMonth).reduce((s, t) => s + Number(t.amount), 0);
+
+  // Financial Overview — Total Revenue - Total Expenses = Net Profit
+  const expensesThisMonth = expenses.filter((e) => e.date.slice(0, 7) === thisMonth).reduce((s, e) => s + Number(e.amount), 0);
+  const netProfitThisMonth = revenueThisMonth - expensesThisMonth;
+
+  const incomeVsExpenseSeries = sumByMonth(transactions, (t) => t.created_at, (t) => Number(t.amount), 6).map((d, i) => ({
+    label: d.label,
+    income: d.total,
+    expenses: sumByMonth(expenses, (e) => e.date, (e) => Number(e.amount), 6)[i]?.total ?? 0,
+  }));
+  const expenseTrendSeries = sumByMonth(expenses, (e) => e.date, (e) => Number(e.amount), 6);
+
+  const categoryTotals = new Map<string, number>();
+  for (const e of expenses) {
+    const name = e.category?.name ?? "Other Expenses";
+    categoryTotals.set(name, (categoryTotals.get(name) ?? 0) + Number(e.amount));
+  }
+  const categoryBreakdown = Array.from(categoryTotals.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
 
   const bookingsSpark = countByDay(activeBookings, (b) => b.created_at, 14);
   const checkInSpark = countByDay(activeBookings, (b) => b.check_in, 14);
@@ -399,6 +442,43 @@ export default function Dashboard() {
             </Link>
           )}
         </Card>
+      </div>
+
+      {/* Financial Overview — income vs expenses, category breakdown, trend, net profit */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Financial Overview</p>
+          <Link to="/expenses" className="text-xs font-medium text-brand-600 hover:text-brand-700">
+            Manage Expenses →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Revenue This Month" value={formatCurrency(revenueThisMonth)} icon={<TrendingUp className="h-5 w-5" />} tone="green" />
+          <StatCard label="Expenses This Month" value={formatCurrency(expensesThisMonth)} icon={<Receipt className="h-5 w-5" />} tone="rose" />
+          <StatCard
+            label="Net Profit This Month"
+            value={formatCurrency(netProfitThisMonth)}
+            subtext="Revenue − Expenses"
+            icon={<PiggyBank className="h-5 w-5" />}
+            tone={netProfitThisMonth >= 0 ? "brand" : "rose"}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Card className="p-5">
+            <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">Monthly Income vs Expenses</p>
+            <IncomeVsExpenseChart data={incomeVsExpenseSeries} />
+          </Card>
+          <Card className="p-5">
+            <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">Expense Category Breakdown</p>
+            {categoryBreakdown.length === 0 ? <EmptyState title="No expenses yet" /> : <ExpenseCategoryDonut data={categoryBreakdown} />}
+          </Card>
+          <Card className="p-5">
+            <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">Monthly Expense Trend</p>
+            <ExpenseTrendChart data={expenseTrendSeries} />
+          </Card>
+        </div>
       </div>
 
       {/* keep a couple of light "everything at a glance" callouts below the fold */}

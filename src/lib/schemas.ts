@@ -61,3 +61,31 @@ export const staffFormSchema = z.object({
 });
 
 export type StaffFormValues = z.infer<typeof staffFormSchema>;
+
+export const expenseFormSchema = z.object({
+  title: z.string().trim().min(2, "Expense title is required"),
+  category_id: z.string().min(1, "Select a category"),
+  amount: z.number().min(0.01, "Amount must be greater than 0"),
+  date: z.string().min(1, "Date is required"),
+  payment_method: z.enum(["cash", "bank_transfer", "online_payment"]),
+  paid_by: z.string().trim().optional(),
+  description: z.string().trim().optional(),
+  status: z.enum(["paid", "pending"]),
+});
+
+export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
+
+export const reminderFormSchema = z.object({
+  title: z.string().trim().min(2, "Reminder title is required"),
+  due_date: z.string().trim().optional(),
+  amount: z.number().min(0, "Amount can't be negative").optional(),
+  priority: z.enum(["low", "medium", "high"]),
+});
+
+export type ReminderFormValues = z.infer<typeof reminderFormSchema>;
+
+export const categoryFormSchema = z.object({
+  name: z.string().trim().min(2, "Category name is required"),
+});
+
+export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
