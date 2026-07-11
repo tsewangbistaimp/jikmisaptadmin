@@ -37,14 +37,14 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-700 text-white shadow-md shadow-brand-500/30">
             <Building2 className="h-6 w-6" />
           </div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Jikmis Apartment</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to the front desk system</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 card-shadow dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 card-shadow dark:border-slate-800 dark:bg-slate-900">
           {location.state?.disabled && (
             <div className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
               Your account has been disabled. Contact the administrator.

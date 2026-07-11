@@ -23,7 +23,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
-import { StatCard } from "@/components/dashboard/DashboardWidgets";
+import { StatCard, GradientStatCard } from "@/components/dashboard/DashboardWidgets";
 import { ExpenseFormDialog, DeleteExpenseDialog } from "@/components/expenses/ExpenseDialogs";
 import { ReminderFormDialog, DeleteReminderDialog } from "@/components/expenses/ReminderDialogs";
 import { supabase } from "@/lib/supabase";
@@ -240,25 +240,29 @@ export default function Expenses() {
       {loading ? (
         <PageLoader rows={2} />
       ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          <StatCard label="Today" value={formatCurrency(stats.todayTotal)} icon={<Wallet className="h-5 w-5" />} tone="brand" />
-          <StatCard label="This Month" value={formatCurrency(stats.monthTotal)} icon={<CalendarRange className="h-5 w-5" />} tone="sky" />
-          <StatCard label="This Year" value={formatCurrency(stats.yearTotal)} icon={<CalendarClock className="h-5 w-5" />} tone="green" />
-          <StatCard
-            label="Pending Payments"
-            value={formatCurrency(stats.pendingTotal)}
-            subtext={`${stats.pendingCount} expense${stats.pendingCount === 1 ? "" : "s"}`}
-            icon={<Clock className="h-5 w-5" />}
-            tone="amber"
-          />
-          <StatCard
-            label="Top Category"
-            value={stats.topCategory}
-            subtext={stats.topAmount > 0 ? formatCurrency(stats.topAmount) : undefined}
-            icon={<PiggyBank className="h-5 w-5" />}
-            tone="rose"
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <GradientStatCard label="Spent Today" value={formatCurrency(stats.todayTotal)} icon={<Wallet className="h-5 w-5" />} tone="green" />
+            <GradientStatCard label="Spent This Month" value={formatCurrency(stats.monthTotal)} icon={<CalendarRange className="h-5 w-5" />} tone="blue" />
+            <GradientStatCard label="Spent This Year" value={formatCurrency(stats.yearTotal)} icon={<CalendarClock className="h-5 w-5" />} tone="purple" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard
+              label="Pending Payments"
+              value={formatCurrency(stats.pendingTotal)}
+              subtext={`${stats.pendingCount} expense${stats.pendingCount === 1 ? "" : "s"}`}
+              icon={<Clock className="h-5 w-5" />}
+              tone="amber"
+            />
+            <StatCard
+              label="Top Category"
+              value={stats.topCategory}
+              subtext={stats.topAmount > 0 ? formatCurrency(stats.topAmount) : undefined}
+              icon={<PiggyBank className="h-5 w-5" />}
+              tone="rose"
+            />
+          </div>
+        </>
       )}
 
       {/* Reminders / todo */}

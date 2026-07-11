@@ -50,7 +50,7 @@ export function Topbar() {
           <button
             onClick={() => setSearchOpen(true)}
             aria-label="Search"
-            className="flex min-h-12 flex-1 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 text-sm text-slate-400 hover:bg-slate-100 md:min-h-10 md:max-w-xs"
+            className="flex min-h-12 flex-1 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 text-sm text-slate-400 shadow-sm hover:bg-slate-100 md:min-h-10 md:max-w-xs"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="hidden truncate sm:inline">Search anything…</span>
@@ -63,16 +63,18 @@ export function Topbar() {
           <button
             title={pendingCount > 0 ? `${pendingCount} bookings with pending balance` : "No pending balances"}
             aria-label={pendingCount > 0 ? `${pendingCount} bookings with pending balance` : "No pending balances"}
-            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 md:h-10 md:w-10"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-100 bg-white text-slate-500 shadow-sm hover:bg-slate-50 md:h-10 md:w-10"
           >
             <Bell className="h-4 w-4" />
             {pendingCount > 0 && (
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />
+              <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-semibold text-white ring-2 ring-white">
+                {pendingCount > 9 ? "9+" : pendingCount}
+              </span>
             )}
           </button>
 
-          <div className="hidden shrink-0 items-center gap-2.5 rounded-full border border-slate-100 py-1 pl-1 pr-3 sm:flex">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-white">
+          <div className="hidden shrink-0 items-center gap-2.5 rounded-full border border-slate-100 bg-white py-1 pl-1 pr-3 shadow-sm sm:flex">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-xs font-semibold text-white">
               {initials(profile?.full_name ?? "?")}
             </div>
             <div className="leading-tight">

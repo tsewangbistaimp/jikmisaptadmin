@@ -378,7 +378,7 @@ export default function Dashboard() {
             <EmptyState title="Nothing today" />
           ) : (
             <div className="flex items-center justify-around">
-              <MiniPercentDonut label="Check In" pct={checkInPct} color="#df5830" />
+              <MiniPercentDonut label="Check In" pct={checkInPct} color="#3d63f5" />
               <MiniPercentDonut label="Check Out" pct={checkOutPct} color="#0ea5e9" />
             </div>
           )}
@@ -465,11 +465,26 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Card className="p-5">
-            <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">Monthly Income vs Expenses</p>
-            <IncomeVsExpenseChart data={incomeVsExpenseSeries} />
-          </Card>
+        {/* Big, full-width chart — the dashboard's primary financial view */}
+        <Card className="p-5 sm:p-6">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Monthly Income vs Expenses</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Last 6 months</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Income
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Expenses
+              </span>
+            </div>
+          </div>
+          <IncomeVsExpenseChart data={incomeVsExpenseSeries} height="h-72 sm:h-80" showLegend={false} />
+        </Card>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-5">
             <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-200">Expense Category Breakdown</p>
             {categoryBreakdown.length === 0 ? <EmptyState title="No expenses yet" /> : <ExpenseCategoryDonut data={categoryBreakdown} />}
