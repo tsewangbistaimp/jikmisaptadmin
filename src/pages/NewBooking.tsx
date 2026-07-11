@@ -732,8 +732,14 @@ export default function NewBooking() {
               </div>
             </div>
 
-            <div className="mx-5 mt-4 flex h-28 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white">
-              <DoorClosed className="h-9 w-9 opacity-90" />
+            <div className="mx-5 mt-4 h-28 overflow-hidden rounded-xl">
+              {selectedRoom?.image_url ? (
+                <img src={selectedRoom.image_url} alt={`Room ${selectedRoom.room_number}`} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+                  <DoorClosed className="h-9 w-9 opacity-90" />
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 p-5 text-sm">

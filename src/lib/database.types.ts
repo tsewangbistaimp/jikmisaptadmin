@@ -40,6 +40,7 @@ export interface Room {
   room_type: string;
   price: number;
   status: RoomStatus;
+  image_url: string | null;
   created_at: string;
 }
 

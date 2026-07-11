@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, DoorClosed } from "lucide-react";
+import { Plus, Pencil, Trash2, DoorClosed, ImagePlus, Loader2, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,15 +77,19 @@ export default function Rooms() {
                 highlightId === r.id && "ring-2 ring-brand-400"
               )}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                  <DoorClosed className="h-5 w-5" />
-                </div>
-                <Badge tone={roomStatusTone(r.status)} className="capitalize">
+              <div className="relative -mx-5 -mt-5 mb-3 h-32 w-[calc(100%+2.5rem)] overflow-hidden">
+                {r.image_url ? (
+                  <img src={r.image_url} alt={`Room ${r.room_number}`} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300 dark:bg-slate-900 dark:text-slate-700">
+                    <DoorClosed className="h-9 w-9" />
+                  </div>
+                )}
+                <Badge tone={roomStatusTone(r.status)} className="absolute right-3 top-3 capitalize shadow-sm">
                   {ROOM_STATUS_LABELS[r.status]}
                 </Badge>
               </div>
-              <p className="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Room {r.room_number}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Room {r.room_number}</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">{r.room_type}</p>
               <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">{formatCurrency(r.price)} / night</p>
 
@@ -154,6 +158,10 @@ function RoomFormDialog({
     defaultValues: { room_number: "", room_type: "", price: 0, status: "available" },
   });
 
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   React.useEffect(() => {
     if (open) {
       reset(
@@ -161,13 +169,40 @@ function RoomFormDialog({
           ? { room_number: room.room_number, room_type: room.room_type, price: room.price, status: room.status }
           : { room_number: "", room_type: "", price: 0, status: "available" }
       );
+      setImageUrl(room?.image_url ?? null);
     }
   }, [open, room, reset]);
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be smaller than 5MB");
+      return;
+    }
+    setUploading(true);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${room?.id ?? "new"}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("room-images").upload(path, file, { upsert: true });
+    setUploading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const { data } = supabase.storage.from("room-images").getPublicUrl(path);
+    setImageUrl(data.publicUrl);
+  };
+
   const onSubmit = async (values: RoomFormValues) => {
+    const payload = { ...values, image_url: imageUrl };
     const { error } = room
-      ? await supabase.from("rooms").update(values).eq("id", room.id)
-      : await supabase.from("rooms").insert(values);
+      ? await supabase.from("rooms").update(payload).eq("id", room.id)
+      : await supabase.from("rooms").insert(payload);
     if (error) {
       toast.error(error.message);
       return;
@@ -180,6 +215,42 @@ function RoomFormDialog({
   return (
     <Dialog open={open} onClose={onClose} title={room ? `Edit Room ${room.room_number}` : "Add Room"} className="max-w-sm">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <Label>Room Photo</Label>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          {imageUrl ? (
+            <div className="relative h-32 w-full overflow-hidden rounded-xl">
+              <img src={imageUrl} alt="Room preview" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setImageUrl(null)}
+                aria-label="Remove photo"
+                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm hover:bg-white"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-brand-300 hover:text-brand-500 dark:border-slate-700"
+            >
+              {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+              <span className="text-xs font-medium">{uploading ? "Uploading…" : "Click to upload a photo"}</span>
+            </button>
+          )}
+          {imageUrl && !uploading && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-1.5 text-xs font-medium text-brand-600 hover:text-brand-700"
+            >
+              Replace photo
+            </button>
+          )}
+        </div>
         <div>
           <Label>Room Number</Label>
           <Input {...register("room_number")} error={errors.room_number?.message} />
