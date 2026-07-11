@@ -1,5 +1,5 @@
 import * as React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -26,7 +26,17 @@ const tabs = [
 export function MobileNav() {
   const { isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [moreOpen, setMoreOpen] = React.useState(false);
+
+  // Hide the bottom nav and FAB on the New Booking form: it's a long,
+  // input-heavy page, and fixed-position chrome at the bottom fights with
+  // the on-screen keyboard opening/closing as the receptionist tabs through
+  // fields, which is what caused the page to visibly "jump" while typing
+  // or scrolling. A dedicated full-screen task flow doesn't need quick nav
+  // shortcuts anyway.
+  const hideChrome = location.pathname.startsWith("/bookings/new");
+  if (hideChrome) return null;
 
   return (
     <>

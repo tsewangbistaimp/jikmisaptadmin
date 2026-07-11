@@ -433,7 +433,7 @@ export default function NewBooking() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 pb-24 lg:pb-0">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">New Booking</h1>
         <p className="text-sm text-slate-500">Create a new booking in just a few simple steps.</p>
@@ -888,6 +888,23 @@ export default function NewBooking() {
             </div>
           </Card>
         </div>
+      </div>
+
+      {/* Mobile-only sticky submit bar — keeps the primary action reachable
+          without scrolling all the way down, and stays out of the way of
+          the on-screen keyboard since it's a normal fixed bar, not part of
+          the scrolling form content. */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur lg:hidden"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-slate-400">Total</p>
+          <p className="truncate text-base font-semibold text-slate-900">{formatCurrency(grandTotal)}</p>
+        </div>
+        <Button type="submit" form={FORM_ID} loading={isSubmitting} className="shrink-0">
+          <CalendarCheck className="h-4 w-4" /> Create Booking
+        </Button>
       </div>
     </div>
   );
