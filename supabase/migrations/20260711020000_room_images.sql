@@ -13,7 +13,9 @@ insert into storage.buckets (id, name, public)
 values ('room-images', 'room-images', true)
 on conflict (id) do update set public = true;
 
-alter table storage.objects enable row level security;
+-- RLS is already enabled on storage.objects by default in every Supabase
+-- project (and only Supabase's internal role can toggle it), so we only
+-- need to add policies here, not enable RLS ourselves.
 
 drop policy if exists "room_images_public_select" on storage.objects;
 create policy "room_images_public_select" on storage.objects
