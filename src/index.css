@@ -26,14 +26,19 @@
 
 html {
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 body {
   @apply bg-slate-50 text-slate-900 font-sans antialiased m-0 dark:bg-slate-950 dark:text-slate-100;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 #root {
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 ::selection {
