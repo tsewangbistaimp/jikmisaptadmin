@@ -160,9 +160,12 @@ begin
 
   -- Invalidate this admin's previous still-active codes so only the latest
   -- one they handed out is valid, avoiding confusion about which is live.
-  update public.auth_codes
+  -- Columns are qualified with the "ac" alias because RETURNS TABLE creates
+  -- implicit variables named "code" and "expires_at" in this function's
+  -- scope, which would otherwise collide with auth_codes' own columns.
+  update public.auth_codes ac
   set used_at = now()
-  where created_by = auth.uid() and used_at is null and expires_at > now();
+  where ac.created_by = auth.uid() and ac.used_at is null and ac.expires_at > now();
 
   v_code := lpad(floor(random() * 1000000)::text, 6, '0');
   v_expires := now() + interval '3 minutes';
