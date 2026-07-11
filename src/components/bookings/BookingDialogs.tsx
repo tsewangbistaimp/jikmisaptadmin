@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2 } from "lucide-react";
+import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { paymentStatusTone, bookingStatusTone } from "@/lib/badge-tones";
-import type { BookingService, BookingWithRelations, PaymentMethod, Transaction } from "@/lib/database.types";
+import type { BookingService, BookingWithRelations, PaymentMethod, Service, Transaction } from "@/lib/database.types";
 
 type TransactionWithStaff = Transaction & { staff: { full_name: string } | null };
 
@@ -250,6 +250,16 @@ export function EditBookingDialog({
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [addOns, setAddOns] = React.useState<BookingService[]>([]);
+  const [services, setServices] = React.useState<Service[]>([]);
+  const [addingItem, setAddingItem] = React.useState(false);
+  const [itemMode, setItemMode] = React.useState<"catalog" | "custom">("catalog");
+  const [selectedServiceId, setSelectedServiceId] = React.useState("");
+  const [customName, setCustomName] = React.useState("");
+  const [customPrice, setCustomPrice] = React.useState("");
+  const [customQty, setCustomQty] = React.useState("1");
+  const [itemBusy, setItemBusy] = React.useState(false);
+
   React.useEffect(() => {
     if (!booking) return;
     setCheckIn(booking.check_in);
@@ -257,9 +267,110 @@ export function EditBookingDialog({
     setTotalAmount(booking.total_amount);
     setNotes(booking.notes ?? "");
     setBookingSource(booking.booking_source);
+    setAddingItem(false);
+
+    supabase
+      .from("booking_services")
+      .select("*")
+      .eq("booking_id", booking.id)
+      .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
+    supabase
+      .from("services")
+      .select("*")
+      .eq("status", "active")
+      .order("name")
+      .then(({ data }) => setServices((data as Service[]) ?? []));
   }, [booking]);
 
   if (!booking) return null;
+
+  const addItem = async () => {
+    let name: string;
+    let unitPrice: number;
+    let quantity: number;
+    let serviceId: string | null = null;
+
+    if (itemMode === "catalog") {
+      const svc = services.find((s) => s.id === selectedServiceId);
+      if (!svc) {
+        toast.error("Select a service to add");
+        return;
+      }
+      name = svc.name;
+      unitPrice = svc.price;
+      quantity = 1;
+      serviceId = svc.id;
+    } else {
+      const price = Number(customPrice);
+      const qty = Math.max(1, Math.floor(Number(customQty)) || 1);
+      if (!customName.trim()) {
+        toast.error("Enter a name for the item");
+        return;
+      }
+      if (!Number.isFinite(price) || price < 0) {
+        toast.error("Enter a valid price");
+        return;
+      }
+      name = customName.trim();
+      unitPrice = price;
+      quantity = qty;
+    }
+
+    setItemBusy(true);
+    const { data: inserted, error: insertError } = await supabase
+      .from("booking_services")
+      .insert({ booking_id: booking.id, service_id: serviceId, name, unit_price: unitPrice, quantity })
+      .select("*")
+      .single();
+    if (insertError) {
+      setItemBusy(false);
+      toast.error(insertError.message);
+      return;
+    }
+
+    const newTotal = totalAmount + unitPrice * quantity;
+    const { error: updateError } = await supabase.from("bookings").update({ total_amount: newTotal }).eq("id", booking.id);
+    setItemBusy(false);
+    if (updateError) {
+      toast.error(updateError.message);
+      return;
+    }
+
+    setAddOns((prev) => [...prev, inserted as BookingService]);
+    setTotalAmount(newTotal);
+    setSelectedServiceId("");
+    setCustomName("");
+    setCustomPrice("");
+    setCustomQty("1");
+    setAddingItem(false);
+    toast.success("Item added");
+    onSaved();
+  };
+
+  const removeItem = async (item: BookingService) => {
+    const newTotal = totalAmount - item.unit_price * item.quantity;
+    if (newTotal < booking.advance_paid) {
+      toast.error("Can't remove — total would drop below the amount already paid");
+      return;
+    }
+    setItemBusy(true);
+    const { error: deleteError } = await supabase.from("booking_services").delete().eq("id", item.id);
+    if (deleteError) {
+      setItemBusy(false);
+      toast.error(deleteError.message);
+      return;
+    }
+    const { error: updateError } = await supabase.from("bookings").update({ total_amount: newTotal }).eq("id", booking.id);
+    setItemBusy(false);
+    if (updateError) {
+      toast.error(updateError.message);
+      return;
+    }
+    setAddOns((prev) => prev.filter((a) => a.id !== item.id));
+    setTotalAmount(newTotal);
+    toast.success("Item removed");
+    onSaved();
+  };
 
   const save = async () => {
     setError(null);
@@ -309,7 +420,100 @@ export function EditBookingDialog({
         <div>
           <Label>Total Amount</Label>
           <Input type="number" min={0} value={totalAmount} onChange={(e) => setTotalAmount(Number(e.target.value))} />
+          <p className="mt-1.5 text-xs text-slate-400">Updates automatically when you add or remove an item below.</p>
         </div>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <Label className="mb-0">Services & Add-ons</Label>
+            {!addingItem && (
+              <button
+                type="button"
+                onClick={() => setAddingItem(true)}
+                className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Item
+              </button>
+            )}
+          </div>
+
+          {addOns.length > 0 && (
+            <ul className="mb-2 space-y-1.5">
+              {addOns.map((a) => (
+                <li key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                  <span className="text-slate-700 dark:text-slate-300">
+                    {a.name} {a.quantity > 1 ? `× ${a.quantity}` : ""}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(a.unit_price * a.quantity)}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(a)}
+                      disabled={itemBusy}
+                      aria-label={`Remove ${a.name}`}
+                      className="text-slate-400 hover:text-red-500 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {addingItem && (
+            <div className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setItemMode("catalog")}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium ${itemMode === "catalog" ? "bg-brand-500 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}
+                >
+                  From catalog
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemMode("custom")}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium ${itemMode === "custom" ? "bg-brand-500 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}
+                >
+                  Custom item
+                </button>
+              </div>
+
+              {itemMode === "catalog" ? (
+                <Select value={selectedServiceId} onChange={(e) => setSelectedServiceId(e.target.value)}>
+                  <option value="">Select a service…</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} · {formatCurrency(s.price)}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <Input
+                    className="col-span-3"
+                    placeholder="Item name"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                  />
+                  <Input type="number" min={0} placeholder="Price" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} />
+                  <Input type="number" min={1} placeholder="Qty" value={customQty} onChange={(e) => setCustomQty(e.target.value)} />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => setAddingItem(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" size="sm" onClick={addItem} loading={itemBusy}>
+                  Add
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div>
           <Label>Booking Source</Label>
           <Select value={bookingSource} onChange={(e) => setBookingSource(e.target.value)}>
