@@ -1,4 +1,5 @@
 import * as React from "react";
+import { motion } from "framer-motion";
 import {
   AreaChart,
   Area,
@@ -19,7 +20,9 @@ import {
 } from "recharts";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { AnimatedNumber, DelayedFadeIn } from "@/components/ui/animated-number";
 import { cn, formatCurrency } from "@/lib/utils";
+import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
 
 // ---------------------------------------------------------------------------
 // Stat card with optional trend + sparkline — white card with a circular
@@ -37,6 +40,8 @@ const TONE_MAP = {
 export function StatCard({
   label,
   value,
+  numeric,
+  format,
   icon,
   tone,
   trend,
@@ -45,6 +50,9 @@ export function StatCard({
 }: {
   label: string;
   value: React.ReactNode;
+  /** When provided, the number animates 0 → numeric on mount/update instead of showing `value` statically. */
+  numeric?: number;
+  format?: (n: number) => string;
   icon: React.ReactNode;
   tone: keyof typeof TONE_MAP;
   trend?: number;
@@ -53,18 +61,22 @@ export function StatCard({
 }) {
   const colors = TONE_MAP[tone];
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+    <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between">
-        <p className="text-xl font-bold text-slate-900 sm:text-2xl">{value}</p>
+        <p className="text-xl font-bold text-slate-900 sm:text-2xl">
+          {numeric !== undefined ? <AnimatedNumber value={numeric} format={format} /> : value}
+        </p>
         <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-white", colors.ring)}>{icon}</div>
       </div>
       <p className="mt-1 text-sm font-medium text-slate-500">{label}</p>
       {subtext && <p className="mt-0.5 text-xs text-slate-400">{subtext}</p>}
       {trend !== undefined && (
-        <span className={cn("mt-2 inline-flex items-center gap-0.5 text-xs font-semibold", trend >= 0 ? "text-emerald-600" : "text-rose-600")}>
-          {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-          {Math.abs(trend)}% <span className="font-normal text-slate-400">this week</span>
-        </span>
+        <DelayedFadeIn>
+          <span className={cn("mt-2 inline-flex items-center gap-0.5 text-xs font-semibold", trend >= 0 ? "text-emerald-600" : "text-rose-600")}>
+            {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {Math.abs(trend)}% <span className="font-normal text-slate-400">this week</span>
+          </span>
+        </DelayedFadeIn>
       )}
       {sparkline && sparkline.length > 1 && (
         <div className="mt-2 h-8">
@@ -81,7 +93,7 @@ export function StatCard({
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -100,27 +112,40 @@ const GRADIENT_TONE_CLASS = {
 export function GradientStatCard({
   label,
   value,
+  numeric,
+  format,
   icon,
   tone,
   subtext,
 }: {
   label: string;
   value: React.ReactNode;
+  numeric?: number;
+  format?: (n: number) => string;
   icon: React.ReactNode;
   tone: keyof typeof GRADIENT_TONE_CLASS;
   subtext?: string;
 }) {
   return (
-    <div className={cn("gradient-card rounded-3xl p-5", GRADIENT_TONE_CLASS[tone])}>
+    <motion.div
+      variants={fadeUp}
+      initial="initial"
+      animate="animate"
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className={cn("gradient-card rounded-3xl p-5", GRADIENT_TONE_CLASS[tone])}
+    >
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-white/80">{label}</p>
-          <p className="mt-1 truncate text-2xl font-bold text-white">{value}</p>
+          <p className="mt-1 truncate text-2xl font-bold text-white">
+            {numeric !== undefined ? <AnimatedNumber value={numeric} format={format} /> : value}
+          </p>
           {subtext && <p className="mt-1 text-xs text-white/70">{subtext}</p>}
         </div>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">{icon}</div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -141,7 +166,17 @@ export function BookingStatusDonut({ data }: { data: { name: string; value: numb
       <div className="relative h-40 w-40 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} strokeWidth={0}>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={52}
+              outerRadius={72}
+              paddingAngle={3}
+              strokeWidth={0}
+              animationDuration={700}
+              animationEasing="ease-out"
+            >
               {data.map((d) => (
                 <Cell key={d.name} fill={STATUS_COLORS[d.name] ?? "#cbd5e1"} />
               ))}
@@ -153,9 +188,9 @@ export function BookingStatusDonut({ data }: { data: { name: string; value: numb
           <p className="text-xs text-slate-400 dark:text-slate-500">Total</p>
         </div>
       </div>
-      <div className="w-full space-y-2">
+      <motion.div variants={staggerContainer(40)} initial="initial" animate="animate" className="w-full space-y-2">
         {data.map((d) => (
-          <div key={d.name} className="flex items-center justify-between text-sm">
+          <motion.div key={d.name} variants={staggerItem} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[d.name] ?? "#cbd5e1" }} />
               <span className="text-slate-600 dark:text-slate-400">{d.name}</span>
@@ -163,9 +198,9 @@ export function BookingStatusDonut({ data }: { data: { name: string; value: numb
             <span className="font-medium text-slate-800 dark:text-slate-200">
               {total > 0 ? Math.round((d.value / total) * 100) : 0}% ({d.value})
             </span>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -185,8 +220,26 @@ export function ReservationsChart({ data }: { data: { label: string; bookings: n
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Line type="monotone" dataKey="bookings" name="Bookings" stroke="#3d63f5" strokeWidth={2.5} dot={false} />
-          <Line type="monotone" dataKey="checkIns" name="Check Ins" stroke="#0ea5e9" strokeWidth={2.5} dot={false} />
+          <Line
+            type="monotone"
+            dataKey="bookings"
+            name="Bookings"
+            stroke="#3d63f5"
+            strokeWidth={2.5}
+            dot={false}
+            animationDuration={700}
+            animationEasing="ease-out"
+          />
+          <Line
+            type="monotone"
+            dataKey="checkIns"
+            name="Check Ins"
+            stroke="#0ea5e9"
+            strokeWidth={2.5}
+            dot={false}
+            animationDuration={700}
+            animationEasing="ease-out"
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -204,7 +257,7 @@ export function OccupancyGauge({ occupied, total }: { occupied: number; total: n
       <div className="relative h-44 w-44">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart cx="50%" cy="50%" innerRadius="72%" outerRadius="100%" barSize={14} data={data} startAngle={90} endAngle={-270}>
-            <RadialBar dataKey="value" cornerRadius={20} background={{ fill: "#f1f5f9" }} />
+            <RadialBar dataKey="value" cornerRadius={20} background={{ fill: "#f1f5f9" }} animationDuration={800} animationEasing="ease-out" />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -236,7 +289,7 @@ export function MiniPercentDonut({ label, pct, color }: { label: string; pct: nu
       <div className="relative h-24 w-24">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart cx="50%" cy="50%" innerRadius="72%" outerRadius="100%" barSize={9} data={data} startAngle={90} endAngle={-270}>
-            <RadialBar dataKey="value" cornerRadius={20} background={{ fill: "#f1f5f9" }} />
+            <RadialBar dataKey="value" cornerRadius={20} background={{ fill: "#f1f5f9" }} animationDuration={800} animationEasing="ease-out" />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -264,7 +317,7 @@ export function RevenueBarChart({ data }: { data: { label: string; total: number
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Bar dataKey="total" fill="#3d63f5" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="total" fill="#3d63f5" radius={[4, 4, 0, 0]} animationDuration={700} animationEasing="ease-out" />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -295,8 +348,8 @@ export function IncomeVsExpenseChart({
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Bar dataKey="income" name="Income" fill="#059669" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expenses" name="Expenses" fill="#e11d48" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="income" name="Income" fill="#059669" radius={[4, 4, 0, 0]} animationDuration={700} animationEasing="ease-out" />
+          <Bar dataKey="expenses" name="Expenses" fill="#e11d48" radius={[4, 4, 0, 0]} animationDuration={700} animationEasing="ease-out" animationBegin={100} />
         </BarChart>
       </ResponsiveContainer>
       {showLegend && (
@@ -335,7 +388,16 @@ export function ExpenseTrendChart({ data }: { data: { label: string; total: numb
             contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             labelStyle={{ fontWeight: 600, color: "#0f172a" }}
           />
-          <Area type="monotone" dataKey="total" name="Expenses" stroke="#e11d48" strokeWidth={2.5} fill="url(#expense-trend)" />
+          <Area
+            type="monotone"
+            dataKey="total"
+            name="Expenses"
+            stroke="#e11d48"
+            strokeWidth={2.5}
+            fill="url(#expense-trend)"
+            animationDuration={700}
+            animationEasing="ease-out"
+          />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -355,7 +417,17 @@ export function ExpenseCategoryDonut({ data }: { data: { name: string; value: nu
       <div className="relative h-40 w-40 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} strokeWidth={0}>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={52}
+              outerRadius={72}
+              paddingAngle={3}
+              strokeWidth={0}
+              animationDuration={700}
+              animationEasing="ease-out"
+            >
               {data.map((d, i) => (
                 <Cell key={d.name} fill={CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]} />
               ))}
@@ -367,9 +439,9 @@ export function ExpenseCategoryDonut({ data }: { data: { name: string; value: nu
           <p className="text-xs text-slate-400 dark:text-slate-500">Total</p>
         </div>
       </div>
-      <div className="w-full space-y-2 max-h-40 overflow-y-auto scrollbar-thin pr-1">
+      <motion.div variants={staggerContainer(40)} initial="initial" animate="animate" className="w-full space-y-2 max-h-40 overflow-y-auto scrollbar-thin pr-1">
         {data.map((d, i) => (
-          <div key={d.name} className="flex items-center justify-between text-sm">
+          <motion.div key={d.name} variants={staggerItem} className="flex items-center justify-between text-sm">
             <div className="flex min-w-0 items-center gap-2">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length] }} />
               <span className="truncate text-slate-600 dark:text-slate-400">{d.name}</span>
@@ -377,9 +449,9 @@ export function ExpenseCategoryDonut({ data }: { data: { name: string; value: nu
             <span className="shrink-0 font-medium text-slate-800 dark:text-slate-200">
               {total > 0 ? Math.round((d.value / total) * 100) : 0}%
             </span>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

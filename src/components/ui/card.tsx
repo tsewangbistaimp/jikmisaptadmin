@@ -1,11 +1,26 @@
 import * as React from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { fadeUp } from "@/lib/motion";
 
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+/**
+ * Every Card in the app fades/slides in on mount and lifts slightly on
+ * hover — since Card is reused everywhere (Dashboard, Rooms, Expenses,
+ * dialogs, table wrappers), this one component upgrade cascades the
+ * "premium SaaS" polish across the whole app without touching each page.
+ * Entrance only plays once per mount (stable `key`s mean it won't replay
+ * on every re-render), and the hover lift is a pure `transform` (GPU).
+ */
+export function Card({ className, ...props }: HTMLMotionProps<"div">) {
   return (
-    <div
+    <motion.div
+      variants={fadeUp}
+      initial="initial"
+      animate="animate"
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className={cn(
-        "rounded-3xl border border-slate-200 bg-white card-shadow dark:border-slate-800 dark:bg-slate-900",
+        "rounded-3xl border border-slate-200 bg-white card-shadow transition-shadow duration-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900",
         className
       )}
       {...props}

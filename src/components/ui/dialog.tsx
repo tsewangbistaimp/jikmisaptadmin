@@ -1,6 +1,8 @@
 import * as React from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { backdropFade, scaleFade } from "@/lib/motion";
 
 interface DialogProps {
   open: boolean;
@@ -23,36 +25,51 @@ export function Dialog({ open, onClose, title, description, children, className 
     };
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in"
-        onClick={onClose}
-      />
-      <div
-        className={cn(
-          "relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800",
-          className
-        )}
-      >
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            {title && <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>}
-            {description && <p className="text-sm text-slate-500 mt-0.5 dark:text-slate-400">{description}</p>}
-          </div>
-          <button
+    <AnimatePresence>
+      {open && (
+        // This outer motion.div carries no animation of its own — it only
+        // needs to BE a motion component so AnimatePresence can hold the
+        // whole tree mounted until its animated descendants (backdrop +
+        // card) finish playing their exit animations, instead of the
+        // dialog just vanishing instantly on close.
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            variants={backdropFade}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={onClose}
-            aria-label="Close dialog"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 md:h-8 md:w-8 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+          />
+          <motion.div
+            variants={scaleFade}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className={cn(
+              "relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800",
+              className
+            )}
           >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                {title && <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>}
+                {description && <p className="text-sm text-slate-500 mt-0.5 dark:text-slate-400">{description}</p>}
+              </div>
+              <button
+                onClick={onClose}
+                aria-label="Close dialog"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 md:h-8 md:w-8 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

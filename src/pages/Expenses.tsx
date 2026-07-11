@@ -242,14 +242,37 @@ export default function Expenses() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <GradientStatCard label="Spent Today" value={formatCurrency(stats.todayTotal)} icon={<Wallet className="h-5 w-5" />} tone="green" />
-            <GradientStatCard label="Spent This Month" value={formatCurrency(stats.monthTotal)} icon={<CalendarRange className="h-5 w-5" />} tone="blue" />
-            <GradientStatCard label="Spent This Year" value={formatCurrency(stats.yearTotal)} icon={<CalendarClock className="h-5 w-5" />} tone="purple" />
+            <GradientStatCard
+              label="Spent Today"
+              value={formatCurrency(stats.todayTotal)}
+              numeric={stats.todayTotal}
+              format={formatCurrency}
+              icon={<Wallet className="h-5 w-5" />}
+              tone="green"
+            />
+            <GradientStatCard
+              label="Spent This Month"
+              value={formatCurrency(stats.monthTotal)}
+              numeric={stats.monthTotal}
+              format={formatCurrency}
+              icon={<CalendarRange className="h-5 w-5" />}
+              tone="blue"
+            />
+            <GradientStatCard
+              label="Spent This Year"
+              value={formatCurrency(stats.yearTotal)}
+              numeric={stats.yearTotal}
+              format={formatCurrency}
+              icon={<CalendarClock className="h-5 w-5" />}
+              tone="purple"
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <StatCard
               label="Pending Payments"
               value={formatCurrency(stats.pendingTotal)}
+              numeric={stats.pendingTotal}
+              format={formatCurrency}
               subtext={`${stats.pendingCount} expense${stats.pendingCount === 1 ? "" : "s"}`}
               icon={<Clock className="h-5 w-5" />}
               tone="amber"

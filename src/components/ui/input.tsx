@@ -1,4 +1,5 @@
 import * as React from "react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -11,8 +12,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         ref={ref}
         className={cn(
-          "flex h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-base md:text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500",
-          error && "border-red-300 focus:ring-red-300 focus:border-red-400 dark:border-red-500/60",
+          "flex h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-base md:text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500",
+          error && "border-red-300 focus:ring-red-300 focus:border-red-400 dark:border-red-500/60 field-shake",
           className
         )}
         {...props}
@@ -30,8 +31,8 @@ export const Textarea = React.forwardRef<
     <textarea
       ref={ref}
       className={cn(
-        "flex min-h-[80px] w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base md:text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500",
-        error && "border-red-300 focus:ring-red-300 focus:border-red-400 dark:border-red-500/60",
+        "flex min-h-[80px] w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base md:text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500",
+        error && "border-red-300 focus:ring-red-300 focus:border-red-400 dark:border-red-500/60 field-shake",
         className
       )}
       {...props}
@@ -51,7 +52,16 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
 
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-xs text-red-500 dark:text-red-400">{message}</p>;
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className="mt-1 text-xs text-red-500 dark:text-red-400"
+    >
+      {message}
+    </motion.p>
+  );
 }
 
 export const Select = React.forwardRef<
@@ -62,8 +72,8 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        "flex h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-base md:text-sm text-slate-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
-        error && "border-red-300 focus:ring-red-300 focus:border-red-400 dark:border-red-500/60",
+        "flex h-12 w-full rounded-2xl border border-slate-200 bg-white px-3 text-base md:text-sm text-slate-900 shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
+        error && "border-red-300 focus:ring-red-300 focus:border-red-400 dark:border-red-500/60 field-shake",
         className
       )}
       {...props}

@@ -1,5 +1,7 @@
 import * as React from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 
 export function Table({ className, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
@@ -13,12 +15,32 @@ export function THead({ className, ...props }: React.HTMLAttributes<HTMLTableSec
   return <thead className={cn("bg-slate-50/80 dark:bg-slate-800/60", className)} {...props} />;
 }
 
-export function TBody({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={cn("divide-y divide-slate-100 dark:divide-slate-800", className)} {...props} />;
+/**
+ * Motion stagger container — each direct TR child (which declares
+ * variants={staggerItem} without its own initial/animate) inherits this
+ * container's animate trigger and staggers in a few ms after the previous
+ * row, instead of the whole table just popping in at once.
+ */
+export function TBody({ className, ...props }: HTMLMotionProps<"tbody">) {
+  return (
+    <motion.tbody
+      variants={staggerContainer(30)}
+      initial="initial"
+      animate="animate"
+      className={cn("divide-y divide-slate-100 dark:divide-slate-800", className)}
+      {...props}
+    />
+  );
 }
 
-export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn("transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40", className)} {...props} />;
+export function TR({ className, ...props }: HTMLMotionProps<"tr">) {
+  return (
+    <motion.tr
+      variants={staggerItem}
+      className={cn("transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40", className)}
+      {...props}
+    />
+  );
 }
 
 export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {

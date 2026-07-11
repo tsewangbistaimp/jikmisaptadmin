@@ -4,17 +4,17 @@ import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-[background-color,box-shadow,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-1 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-[background-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-px active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-1 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:scale-100",
   {
     variants: {
       variant: {
         default: "bg-brand-500 text-white shadow-sm hover:bg-brand-600 hover:shadow-md",
-        secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
+        secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200 hover:shadow-sm dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
         outline:
-          "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
+          "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
         ghost: "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
         destructive: "bg-red-500 text-white shadow-sm hover:bg-red-600 hover:shadow-md",
-        link: "text-brand-600 underline-offset-4 hover:underline dark:text-brand-400 active:scale-100",
+        link: "text-brand-600 underline-offset-4 hover:underline hover:translate-y-0 dark:text-brand-400 active:scale-100",
       },
       size: {
         default: "h-11 px-4 py-2 md:h-10",

@@ -1,11 +1,13 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Search, User, ClipboardList, DoorClosed } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import type { Booking, Guest, Room } from "@/lib/database.types";
 import { Spinner } from "@/components/ui/misc";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 
 export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
@@ -66,7 +68,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         />
       </div>
 
-      <div className="mt-3 max-h-80 overflow-y-auto scrollbar-thin">
+      <motion.div variants={staggerContainer(25)} initial="initial" animate="animate" className="mt-3 max-h-80 overflow-y-auto scrollbar-thin">
         {loading && (
           <div className="flex justify-center py-6">
             <Spinner />
@@ -81,18 +83,19 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
           <div className="mb-2">
             <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">Guests</p>
             {guests.map((g) => (
-              <button
+              <motion.button
                 key={g.id}
+                variants={staggerItem}
                 onClick={() => {
                   navigate(`/guests?highlight=${g.id}`);
                   onClose();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50 dark:bg-slate-900"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-slate-50 dark:bg-slate-900"
               >
                 <User className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <span className="font-medium text-slate-800 dark:text-slate-200">{g.full_name}</span>
                 <span className="text-slate-400 dark:text-slate-500">{g.phone}</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         )}
@@ -101,17 +104,18 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
           <div className="mb-2">
             <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">Bookings</p>
             {bookings.map((b) => (
-              <button
+              <motion.button
                 key={b.id}
+                variants={staggerItem}
                 onClick={() => {
                   navigate(`/bookings?highlight=${b.id}`);
                   onClose();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50 dark:bg-slate-900"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-slate-50 dark:bg-slate-900"
               >
                 <ClipboardList className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <span className="font-medium text-slate-800 dark:text-slate-200">{b.booking_number}</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         )}
@@ -120,22 +124,23 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
           <div>
             <p className="px-1 py-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">Rooms</p>
             {rooms.map((r) => (
-              <button
+              <motion.button
                 key={r.id}
+                variants={staggerItem}
                 onClick={() => {
                   navigate(`/rooms?highlight=${r.id}`);
                   onClose();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-slate-50 dark:bg-slate-900"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-slate-50 dark:bg-slate-900"
               >
                 <DoorClosed className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <span className="font-medium text-slate-800 dark:text-slate-200">Room {r.room_number}</span>
                 <span className="text-slate-400 dark:text-slate-500">{r.room_type}</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </Dialog>
   );
 }

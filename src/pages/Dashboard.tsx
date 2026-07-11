@@ -276,6 +276,7 @@ export default function Dashboard() {
         <StatCard
           label="Total Bookings"
           value={totalBookingsAllTime}
+          numeric={totalBookingsAllTime}
           icon={<ClipboardList className="h-5 w-5" />}
           tone="brand"
           trend={monthOverMonthChange(bookingsThisMonth, bookingsLastMonth)}
@@ -284,6 +285,7 @@ export default function Dashboard() {
         <StatCard
           label="Available Rooms"
           value={availableRooms}
+          numeric={availableRooms}
           icon={<DoorOpen className="h-5 w-5" />}
           tone="green"
           subtext={`${occupiedRooms} occupied of ${rooms.length}`}
@@ -291,6 +293,7 @@ export default function Dashboard() {
         <StatCard
           label="Check In Today"
           value={checkInsToday}
+          numeric={checkInsToday}
           icon={<LogIn className="h-5 w-5" />}
           tone="amber"
           trend={monthOverMonthChange(checkInsToday, checkInsYesterday)}
@@ -299,6 +302,7 @@ export default function Dashboard() {
         <StatCard
           label="Check Out Today"
           value={checkOutsToday}
+          numeric={checkOutsToday}
           icon={<LogOut className="h-5 w-5" />}
           tone="rose"
           trend={monthOverMonthChange(checkOutsToday, checkOutsYesterday)}
@@ -307,6 +311,8 @@ export default function Dashboard() {
         <StatCard
           label="Total Revenue"
           value={formatCurrency(revenueThisMonth)}
+          numeric={revenueThisMonth}
+          format={formatCurrency}
           icon={<Wallet className="h-5 w-5" />}
           tone="sky"
           trend={monthOverMonthChange(revenueThisMonth, revenueLastMonth)}
@@ -454,11 +460,27 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Revenue This Month" value={formatCurrency(revenueThisMonth)} icon={<TrendingUp className="h-5 w-5" />} tone="green" />
-          <StatCard label="Expenses This Month" value={formatCurrency(expensesThisMonth)} icon={<Receipt className="h-5 w-5" />} tone="rose" />
+          <StatCard
+            label="Revenue This Month"
+            value={formatCurrency(revenueThisMonth)}
+            numeric={revenueThisMonth}
+            format={formatCurrency}
+            icon={<TrendingUp className="h-5 w-5" />}
+            tone="green"
+          />
+          <StatCard
+            label="Expenses This Month"
+            value={formatCurrency(expensesThisMonth)}
+            numeric={expensesThisMonth}
+            format={formatCurrency}
+            icon={<Receipt className="h-5 w-5" />}
+            tone="rose"
+          />
           <StatCard
             label="Net Profit This Month"
             value={formatCurrency(netProfitThisMonth)}
+            numeric={netProfitThisMonth}
+            format={formatCurrency}
             subtext="Revenue − Expenses"
             icon={<PiggyBank className="h-5 w-5" />}
             tone={netProfitThisMonth >= 0 ? "brand" : "rose"}

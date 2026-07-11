@@ -95,6 +95,67 @@ body {
   background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
 }
 
+/* Shimmer skeleton loader — a moving highlight sweep instead of a flat pulse,
+   used by the shared Skeleton component (loading states across every page). */
+@keyframes shimmer-sweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton-shimmer {
+  background-image: linear-gradient(90deg, #f1f5f9 25%, #e7ecf3 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+.dark .skeleton-shimmer {
+  background-image: linear-gradient(90deg, #1e293b 25%, #263244 50%, #1e293b 75%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+    background-image: none;
+    background-color: #f1f5f9;
+  }
+  .dark .skeleton-shimmer {
+    background-color: #1e293b;
+  }
+}
+
+/* Brief validation-error shake for form fields (Input/Select/Textarea).
+   Plays once when the `error` class is first applied; React won't restart
+   it on subsequent re-renders since the className stays the same. */
+@keyframes field-shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+.field-shake {
+  animation: field-shake 0.4s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-shake {
+    animation: none;
+  }
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;

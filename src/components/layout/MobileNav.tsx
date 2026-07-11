@@ -1,5 +1,6 @@
 import * as React from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { backdropFade, sheetVariants } from "@/lib/motion";
 
 const tabs = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -81,39 +83,52 @@ export function MobileNav() {
       </nav>
 
       {/* "More" sheet */}
-      {moreOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMoreOpen(false)} />
-          <div
-            className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-2 pb-4 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
-          >
-            <div className="flex items-center justify-between px-3 py-3">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">More</p>
-              <button onClick={() => setMoreOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-              </button>
-            </div>
-
-            <MoreLink to="/transactions" label="Transactions" icon={CreditCard} onClick={() => setMoreOpen(false)} />
-            <MoreLink to="/expenses" label="Expenses" icon={Receipt} onClick={() => setMoreOpen(false)} />
-            <MoreLink to="/services" label="Services" icon={Sparkles} onClick={() => setMoreOpen(false)} />
-            {isAdmin && <MoreLink to="/settings/users" label="Settings & Staff" icon={Settings} onClick={() => setMoreOpen(false)} />}
-
-            <button
-              onClick={async () => {
-                setMoreOpen(false);
-                await signOut();
-                navigate("/login");
-              }}
-              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+      <AnimatePresence>
+        {moreOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <motion.div
+              variants={backdropFade}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="absolute inset-0 bg-slate-900/40"
+              onClick={() => setMoreOpen(false)}
+            />
+            <motion.div
+              variants={sheetVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-2 pb-4 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
             >
-              <LogOut className="h-5 w-5" />
-              Log out
-            </button>
+              <div className="flex items-center justify-between px-3 py-3">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">More</p>
+                <button onClick={() => setMoreOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                </button>
+              </div>
+
+              <MoreLink to="/transactions" label="Transactions" icon={CreditCard} onClick={() => setMoreOpen(false)} />
+              <MoreLink to="/expenses" label="Expenses" icon={Receipt} onClick={() => setMoreOpen(false)} />
+              <MoreLink to="/services" label="Services" icon={Sparkles} onClick={() => setMoreOpen(false)} />
+              {isAdmin && <MoreLink to="/settings/users" label="Settings & Staff" icon={Settings} onClick={() => setMoreOpen(false)} />}
+
+              <button
+                onClick={async () => {
+                  setMoreOpen(false);
+                  await signOut();
+                  navigate("/login");
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+              >
+                <LogOut className="h-5 w-5" />
+                Log out
+              </button>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </>
   );
 }

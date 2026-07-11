@@ -1,5 +1,6 @@
 import * as React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { dropdownVariants, SPRING_SOFT, DURATION } from "@/lib/motion";
 
 interface NavItem {
   to: string;
@@ -46,6 +48,53 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     ],
   },
 ];
+
+// Shared nav row: renders a Framer Motion pill (shared layoutId) behind
+// whichever item is currently active, so switching pages slides the
+// highlight smoothly to the new item instead of instantly popping there.
+function SidebarNavLink({
+  to,
+  end,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  to: string;
+  end?: boolean;
+  onClick?: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onClick}
+      className="group relative flex items-center gap-3 overflow-hidden rounded-full px-4 py-2.5 text-sm font-medium hover:bg-slate-50"
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <motion.span
+              layoutId="sidebar-active-pill"
+              className="absolute inset-0 rounded-full bg-brand-50"
+              transition={SPRING_SOFT}
+            />
+          )}
+          <Icon
+            className={cn(
+              "relative z-10 h-4 w-4 shrink-0 transition-[color,transform] duration-150 ease-out group-hover:scale-105",
+              isActive ? "text-brand-700" : "text-slate-500"
+            )}
+          />
+          <span className={cn("relative z-10 transition-colors duration-150", isActive ? "font-semibold text-brand-700" : "text-slate-500 group-hover:text-slate-900")}>
+            {label}
+          </span>
+        </>
+      )}
+    </NavLink>
+  );
+}
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin, profile, signOut } = useAuth();
@@ -81,23 +130,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </p>
             <div className="space-y-0.5">
               {group.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  onClick={onNavigate}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-brand-50 text-brand-700 font-semibold"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                    )
-                  }
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </NavLink>
+                <SidebarNavLink key={item.to} to={item.to} end={item.end} onClick={onNavigate} icon={item.icon} label={item.label} />
               ))}
             </div>
           </div>
@@ -108,21 +141,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Admin
             </p>
-            <NavLink
-              to="/settings/users"
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-brand-50 text-brand-700 font-semibold"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                )
-              }
-            >
-              <Settings className="h-4 w-4" />
-              Settings & Staff
-            </NavLink>
+            <SidebarNavLink to="/settings/users" onClick={onNavigate} icon={Settings} label="Settings & Staff" />
           </div>
         )}
       </nav>
@@ -142,23 +161,32 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <ChevronUp className={cn("h-4 w-4 text-slate-400 transition-transform", menuOpen && "rotate-180")} />
         </button>
 
-        {menuOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-            <div className="absolute bottom-full left-3 right-3 z-20 mb-2 rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl">
-              <button
-                onClick={async () => {
-                  await signOut();
-                  navigate("/login");
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+        <AnimatePresence>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+              <motion.div
+                variants={dropdownVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                style={{ transformOrigin: "bottom" }}
+                className="absolute bottom-full left-3 right-3 z-20 mb-2 rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl"
               >
-                <LogOut className="h-4 w-4" />
-                Log out
-              </button>
-            </div>
-          </>
-        )}
+                <button
+                  onClick={async () => {
+                    await signOut();
+                    navigate("/login");
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Log out
+                </button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
