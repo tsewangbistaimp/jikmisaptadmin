@@ -33,7 +33,7 @@ export function Dialog({ open, onClose, title, description, children, className 
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800",
+          "relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 dark:border dark:border-slate-800",
           className
         )}
       >

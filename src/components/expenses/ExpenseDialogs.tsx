@@ -181,7 +181,7 @@ export function ExpenseFormDialog({
           <Label>Category</Label>
           {!addingCategory ? (
             <div className="flex items-center gap-2">
-              <Select {...register("category_id")} className="flex-1" error={errors.category_id?.message}>
+              <Select {...register("category_id")} className="min-w-0 flex-1" error={errors.category_id?.message}>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -189,24 +189,24 @@ export function ExpenseFormDialog({
                 ))}
               </Select>
               {isAdmin && (
-                <Button type="button" variant="outline" size="sm" onClick={() => setAddingCategory(true)}>
+                <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setAddingCategory(true)}>
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Input
                 autoFocus
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="New category name"
-                className="flex-1"
+                className="min-w-0 flex-1 basis-full sm:basis-auto"
               />
-              <Button type="button" size="sm" onClick={addCategory} loading={savingCategory}>
+              <Button type="button" size="sm" className="shrink-0" onClick={addCategory} loading={savingCategory}>
                 Add
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setAddingCategory(false)}>
+              <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => setAddingCategory(false)}>
                 Cancel
               </Button>
             </div>
