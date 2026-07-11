@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { backdropFade, sheetVariants } from "@/lib/motion";
+import { backdropFade, sheetVariants, SPRING_SNAPPY } from "@/lib/motion";
 
 const tabs = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -44,41 +44,50 @@ export function MobileNav() {
   return (
     <>
       {/* Floating Action Button */}
-      <button
+      <motion.button
         onClick={() => navigate("/bookings/new")}
         aria-label="New Booking"
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg shadow-brand-500/30 active:scale-95 transition-transform md:hidden"
+        whileTap={{ scale: 0.9 }}
+        whileHover={{ y: -2 }}
+        transition={SPRING_SNAPPY}
+        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-lg shadow-brand-500/40 md:hidden"
       >
         <Plus className="h-6 w-6" />
-      </button>
+      </motion.button>
 
-      {/* Bottom tab bar */}
+      {/* Bottom tab bar — floating "liquid glass" pill: frosted dark
+          backdrop blur, a soft top sheen for the glass highlight, and a
+          spring-animated pill that slides behind whichever tab is active
+          instead of the highlight just popping to the new spot. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-slate-200 bg-white/95 backdrop-blur md:hidden dark:border-slate-800 dark:bg-slate-950/95"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed inset-x-4 z-30 flex items-center justify-around gap-1 rounded-full border border-white/10 bg-slate-900/75 p-1.5 shadow-2xl shadow-slate-900/30 backdrop-blur-xl md:hidden"
+        style={{
+          bottom: "max(1rem, env(safe-area-inset-bottom))",
+          boxShadow: "0 12px 32px -8px rgba(15,23,42,0.45), inset 0 1px 0 rgba(255,255,255,0.12)",
+        }}
       >
         {tabs.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.end}
-            className={({ isActive }) =>
-              cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium min-h-12",
-                isActive ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500"
-              )
-            }
-          >
-            <tab.icon className="h-5 w-5" />
-            {tab.label}
+          <NavLink key={tab.to} to={tab.to} end={tab.end} aria-label={tab.label} className="relative flex h-12 flex-1 items-center justify-center rounded-full">
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.span
+                    layoutId="mobile-nav-active-pill"
+                    transition={SPRING_SNAPPY}
+                    className="absolute inset-1 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 shadow-lg shadow-brand-500/50"
+                  />
+                )}
+                <motion.span whileTap={{ scale: 0.82 }} transition={{ duration: 0.12 }} className="relative z-10 flex h-full w-full items-center justify-center">
+                  <tab.icon className={cn("h-5 w-5 transition-colors duration-150", isActive ? "text-white" : "text-slate-300")} />
+                </motion.span>
+              </>
+            )}
           </NavLink>
         ))}
-        <button
-          onClick={() => setMoreOpen(true)}
-          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium min-h-12 text-slate-400 dark:text-slate-500"
-        >
-          <Menu className="h-5 w-5" />
-          More
+        <button onClick={() => setMoreOpen(true)} aria-label="More" className="relative flex h-12 flex-1 items-center justify-center rounded-full">
+          <motion.span whileTap={{ scale: 0.82 }} transition={{ duration: 0.12 }} className="flex h-full w-full items-center justify-center">
+            <Menu className="h-5 w-5 text-slate-300" />
+          </motion.span>
         </button>
       </nav>
 
