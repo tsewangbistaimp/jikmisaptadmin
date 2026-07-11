@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer, Building2, Wallet, ShieldCheck } from "lucide-react";
+import { Printer, Building2, Wallet, ShieldCheck, IdCard } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ export function BookingDetailDialog({
 }) {
   const [transactions, setTransactions] = React.useState<TransactionWithStaff[]>([]);
   const [addOns, setAddOns] = React.useState<BookingService[]>([]);
+  const [idPhotoUrl, setIdPhotoUrl] = React.useState<string | null>(null);
 
   const reloadTransactions = React.useCallback(() => {
     if (!booking) return;
@@ -47,6 +48,14 @@ export function BookingDetailDialog({
       .select("*")
       .eq("booking_id", booking.id)
       .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
+
+    setIdPhotoUrl(null);
+    if (booking.guest?.id_document_path) {
+      supabase.storage
+        .from("guest-documents")
+        .createSignedUrl(booking.guest.id_document_path, 3600)
+        .then(({ data }) => setIdPhotoUrl(data?.signedUrl ?? null));
+    }
   }, [booking, reloadTransactions]);
 
   if (!booking) return null;
@@ -77,6 +86,17 @@ export function BookingDetailDialog({
           <Info label="Balance" value={formatCurrency(booking.remaining_balance)} />
           <Info label="Method" value={booking.payment_method ? PAYMENT_METHOD_LABELS[booking.payment_method] : "—"} />
         </div>
+
+        {idPhotoUrl && (
+          <div>
+            <p className="mb-2 flex items-center gap-1 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
+              <IdCard className="h-3.5 w-3.5" /> Guest ID
+            </p>
+            <a href={idPhotoUrl} target="_blank" rel="noreferrer">
+              <img src={idPhotoUrl} alt="Guest ID" className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 hover:opacity-90" />
+            </a>
+          </div>
+        )}
 
         {booking.notes && (
           <div>

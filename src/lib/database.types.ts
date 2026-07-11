@@ -31,6 +31,7 @@ export interface Guest {
   passport_number: string | null;
   guest_count: number;
   notes: string | null;
+  id_document_path: string | null;
   created_at: string;
 }
 

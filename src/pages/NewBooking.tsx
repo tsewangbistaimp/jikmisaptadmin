@@ -24,6 +24,9 @@ import {
   Zap,
   DoorClosed,
   CalendarCheck,
+  IdCard,
+  ImagePlus,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Input, Label, Textarea, Select, FieldError } from "@/components/ui/input";
@@ -92,6 +95,10 @@ export default function NewBooking() {
   const [usingExistingGuest, setUsingExistingGuest] = React.useState(false);
   const [bookedRoomIds, setBookedRoomIds] = React.useState<Set<string>>(new Set());
   const [checkingAvailability, setCheckingAvailability] = React.useState(false);
+  const [idDocPath, setIdDocPath] = React.useState<string | null>(null);
+  const [idDocPreviewUrl, setIdDocPreviewUrl] = React.useState<string | null>(null);
+  const [idDocUploading, setIdDocUploading] = React.useState(false);
+  const idFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -232,13 +239,47 @@ export default function NewBooking() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookedRoomIds]);
 
-  const applyExistingGuest = () => {
+  const applyExistingGuest = async () => {
     if (!matchingGuest) return;
     setValue("full_name", matchingGuest.full_name);
     setValue("nationality", matchingGuest.nationality ?? "");
     setValue("passport_number", matchingGuest.passport_number ?? "");
     setUsingExistingGuest(true);
+    setIdDocPath(matchingGuest.id_document_path ?? null);
+    if (matchingGuest.id_document_path) {
+      const { data } = await supabase.storage
+        .from("guest-documents")
+        .createSignedUrl(matchingGuest.id_document_path, 3600);
+      setIdDocPreviewUrl(data?.signedUrl ?? null);
+    } else {
+      setIdDocPreviewUrl(null);
+    }
     toast.success("Loaded existing guest details");
+  };
+
+  const handleIdDocChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image must be smaller than 8MB");
+      return;
+    }
+    setIdDocUploading(true);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("guest-documents").upload(path, file);
+    setIdDocUploading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setIdDocPath(path);
+    setIdDocPreviewUrl(URL.createObjectURL(file));
   };
 
   const onSubmit = async (values: BookingFormValues) => {
@@ -268,6 +309,10 @@ export default function NewBooking() {
       // 1. Reuse or create guest
       let guestId = usingExistingGuest && matchingGuest ? matchingGuest.id : null;
 
+      if (guestId && idDocPath && idDocPath !== (matchingGuest?.id_document_path ?? null)) {
+        await supabase.from("guests").update({ id_document_path: idDocPath }).eq("id", guestId);
+      }
+
       if (!guestId) {
         const { data: existing } = await supabase
           .from("guests")
@@ -285,6 +330,7 @@ export default function NewBooking() {
               nationality: values.nationality || null,
               passport_number: values.passport_number || null,
               guest_count: values.guest_count,
+              ...(idDocPath ? { id_document_path: idDocPath } : {}),
             })
             .eq("id", existing.id);
         } else {
@@ -296,6 +342,7 @@ export default function NewBooking() {
               nationality: values.nationality || null,
               passport_number: values.passport_number || null,
               guest_count: values.guest_count,
+              id_document_path: idDocPath,
             })
             .select("id")
             .single();
@@ -376,6 +423,9 @@ export default function NewBooking() {
       reset();
       setAddOnQty({});
       setCustomItems([]);
+      setIdDocPath(null);
+      setIdDocPreviewUrl(null);
+      setUsingExistingGuest(false);
       navigate("/bookings");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save booking");
@@ -432,6 +482,50 @@ export default function NewBooking() {
               <IconField icon={CreditCard}>
                 <Input id="passport_number" {...register("passport_number")} placeholder="Enter passport or ID number" />
               </IconField>
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label>Guest ID Photo (Optional)</Label>
+              <input ref={idFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIdDocChange} />
+              {idDocPreviewUrl ? (
+                <div className="relative flex items-center gap-3 rounded-xl border border-slate-200 p-2">
+                  <img src={idDocPreviewUrl} alt="Guest ID preview" className="h-16 w-16 rounded-lg object-cover" />
+                  <div className="flex-1 text-sm text-slate-600">Photo attached</div>
+                  <button
+                    type="button"
+                    onClick={() => idFileInputRef.current?.click()}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdDocPath(null);
+                      setIdDocPreviewUrl(null);
+                    }}
+                    aria-label="Remove ID photo"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => idFileInputRef.current?.click()}
+                  disabled={idDocUploading}
+                  className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-brand-300 hover:text-brand-500"
+                >
+                  {idDocUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                  <span className="text-sm font-medium">
+                    {idDocUploading ? "Uploading…" : "Upload a photo of the guest's ID or passport"}
+                  </span>
+                </button>
+              )}
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-400">
+                <IdCard className="h-3 w-3" /> Only staff can view this photo — it's never public.
+              </p>
             </div>
 
             <div>
