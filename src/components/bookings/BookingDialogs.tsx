@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer, Building2, Wallet, ShieldCheck, IdCard } from "lucide-react";
+import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2 } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,53 @@ export function BookingDetailDialog({
   const [transactions, setTransactions] = React.useState<TransactionWithStaff[]>([]);
   const [addOns, setAddOns] = React.useState<BookingService[]>([]);
   const [idPhotoUrl, setIdPhotoUrl] = React.useState<string | null>(null);
+  const [idPhotoUploading, setIdPhotoUploading] = React.useState(false);
+  const idFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const loadIdPhoto = React.useCallback((path: string | null | undefined) => {
+    if (!path) {
+      setIdPhotoUrl(null);
+      return;
+    }
+    supabase.storage
+      .from("guest-documents")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => setIdPhotoUrl(data?.signedUrl ?? null));
+  }, []);
+
+  const handleIdPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !booking?.guest?.id) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image must be smaller than 8MB");
+      return;
+    }
+    setIdPhotoUploading(true);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("guest-documents").upload(path, file);
+    if (uploadError) {
+      setIdPhotoUploading(false);
+      toast.error(uploadError.message);
+      return;
+    }
+    const { error: updateError } = await supabase
+      .from("guests")
+      .update({ id_document_path: path })
+      .eq("id", booking.guest.id);
+    setIdPhotoUploading(false);
+    if (updateError) {
+      toast.error(updateError.message);
+      return;
+    }
+    toast.success("Guest ID photo updated");
+    loadIdPhoto(path);
+  };
 
   const reloadTransactions = React.useCallback(() => {
     if (!booking) return;
@@ -49,14 +96,8 @@ export function BookingDetailDialog({
       .eq("booking_id", booking.id)
       .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
 
-    setIdPhotoUrl(null);
-    if (booking.guest?.id_document_path) {
-      supabase.storage
-        .from("guest-documents")
-        .createSignedUrl(booking.guest.id_document_path, 3600)
-        .then(({ data }) => setIdPhotoUrl(data?.signedUrl ?? null));
-    }
-  }, [booking, reloadTransactions]);
+    loadIdPhoto(booking.guest?.id_document_path);
+  }, [booking, reloadTransactions, loadIdPhoto]);
 
   if (!booking) return null;
 
@@ -87,16 +128,39 @@ export function BookingDetailDialog({
           <Info label="Method" value={booking.payment_method ? PAYMENT_METHOD_LABELS[booking.payment_method] : "—"} />
         </div>
 
-        {idPhotoUrl && (
-          <div>
-            <p className="mb-2 flex items-center gap-1 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
-              <IdCard className="h-3.5 w-3.5" /> Guest ID
-            </p>
-            <a href={idPhotoUrl} target="_blank" rel="noreferrer">
-              <img src={idPhotoUrl} alt="Guest ID" className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 hover:opacity-90" />
-            </a>
-          </div>
-        )}
+        <div>
+          <p className="mb-2 flex items-center gap-1 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
+            <IdCard className="h-3.5 w-3.5" /> Guest ID
+          </p>
+          <input ref={idFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIdPhotoChange} />
+          {idPhotoUrl ? (
+            <div className="flex items-center gap-3">
+              <a href={idPhotoUrl} target="_blank" rel="noreferrer">
+                <img src={idPhotoUrl} alt="Guest ID" className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200 hover:opacity-90" />
+              </a>
+              <button
+                type="button"
+                onClick={() => idFileInputRef.current?.click()}
+                disabled={idPhotoUploading}
+                className="text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+              >
+                {idPhotoUploading ? "Uploading…" : "Replace photo"}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => idFileInputRef.current?.click()}
+              disabled={idPhotoUploading}
+              className="flex h-20 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/40 text-brand-500 hover:border-brand-300 hover:bg-brand-50"
+            >
+              {idPhotoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              <span className="text-sm font-medium">
+                {idPhotoUploading ? "Uploading…" : "Add guest ID photo"}
+              </span>
+            </button>
+          )}
+        </div>
 
         {booking.notes && (
           <div>

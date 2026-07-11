@@ -488,39 +488,48 @@ export default function NewBooking() {
               <Label>Guest ID Photo (Optional)</Label>
               <input ref={idFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIdDocChange} />
               {idDocPreviewUrl ? (
-                <div className="relative flex items-center gap-3 rounded-xl border border-slate-200 p-2">
-                  <img src={idDocPreviewUrl} alt="Guest ID preview" className="h-16 w-16 rounded-lg object-cover" />
-                  <div className="flex-1 text-sm text-slate-600">Photo attached</div>
-                  <button
-                    type="button"
-                    onClick={() => idFileInputRef.current?.click()}
-                    className="text-xs font-medium text-brand-600 hover:text-brand-700"
-                  >
-                    Replace
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIdDocPath(null);
-                      setIdDocPreviewUrl(null);
-                    }}
-                    aria-label="Remove ID photo"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                <div className="relative flex flex-col items-center gap-3 rounded-2xl border-2 border-brand-200 bg-brand-50/50 p-5 sm:flex-row">
+                  <img src={idDocPreviewUrl} alt="Guest ID preview" className="h-32 w-32 shrink-0 rounded-xl object-cover ring-1 ring-brand-200 sm:h-28 sm:w-28" />
+                  <div className="flex-1 text-center sm:text-left">
+                    <p className="text-sm font-semibold text-slate-800">Photo attached</p>
+                    <p className="text-xs text-slate-500">This will be saved to the guest's record.</p>
+                    <div className="mt-2 flex justify-center gap-3 sm:justify-start">
+                      <button
+                        type="button"
+                        onClick={() => idFileInputRef.current?.click()}
+                        className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                      >
+                        Replace photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIdDocPath(null);
+                          setIdDocPreviewUrl(null);
+                        }}
+                        className="text-sm font-medium text-slate-400 hover:text-slate-600"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => idFileInputRef.current?.click()}
                   disabled={idDocUploading}
-                  className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-brand-300 hover:text-brand-500"
+                  className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand-200 bg-brand-50/40 text-brand-500 transition-colors hover:border-brand-300 hover:bg-brand-50"
                 >
-                  {idDocUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                  <span className="text-sm font-medium">
-                    {idDocUploading ? "Uploading…" : "Upload a photo of the guest's ID or passport"}
+                  {idDocUploading ? (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  ) : (
+                    <ImagePlus className="h-8 w-8" />
+                  )}
+                  <span className="text-base font-semibold">
+                    {idDocUploading ? "Uploading…" : "Take a photo or upload guest ID"}
                   </span>
+                  <span className="text-xs text-brand-400">Passport, citizenship card, or driver's license</span>
                 </button>
               )}
               <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-400">
