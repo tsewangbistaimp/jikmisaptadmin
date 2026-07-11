@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { IconButton } from "@/components/ui/icon-button";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, FieldError } from "@/components/ui/input";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
@@ -290,28 +291,6 @@ function AuthorizationCard({ staff }: { staff: Profile[] }) {
   );
 }
 
-function IconButton({
-  children,
-  onClick,
-  title,
-  destructive,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  title: string;
-  destructive?: boolean;
-}) {
-  return (
-    <button
-      title={title}
-      onClick={onClick}
-      aria-label={title}
-      className={`flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 md:h-8 md:w-8 dark:hover:bg-slate-800 ${destructive ? "text-red-500 dark:text-red-400 hover:bg-red-50 dark:bg-red-500/10" : "text-slate-500 dark:text-slate-400"}`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function CreateStaffDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const {
