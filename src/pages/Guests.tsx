@@ -165,6 +165,7 @@ function GuestProfileDialog({
 }) {
   const [bookings, setBookings] = React.useState<(Booking & { room: Room })[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [idPhotoUrl, setIdPhotoUrl] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!guest) return;
@@ -178,6 +179,20 @@ function GuestProfileDialog({
         setBookings((data as (Booking & { room: Room })[]) ?? []);
         setLoading(false);
       });
+  }, [guest]);
+
+  // Show the guest ID photo the receptionist captured during booking, the
+  // same way it's shown on the booking detail view — signed URL, since the
+  // guest-documents bucket is private.
+  React.useEffect(() => {
+    if (!guest?.id_document_path) {
+      setIdPhotoUrl(null);
+      return;
+    }
+    supabase.storage
+      .from("guest-documents")
+      .createSignedUrl(guest.id_document_path, 3600)
+      .then(({ data }) => setIdPhotoUrl(data?.signedUrl ?? null));
   }, [guest]);
 
   if (!guest) return null;
@@ -203,9 +218,27 @@ function GuestProfileDialog({
           <StatBox label="Current Booking" value={current ? current.booking_number : "None"} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <Info label="Nationality" value={guest.nationality ?? "—"} />
-          <Info label="Passport / ID" value={guest.passport_number ?? "—"} />
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Guest Details (from booking)</p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <Info label="Phone" value={guest.phone ?? "—"} />
+            <Info label="Guests" value={String(guest.guest_count)} />
+            <Info label="Nationality" value={guest.nationality ?? "—"} />
+            <Info label="Passport / ID" value={guest.passport_number ?? "—"} />
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 flex items-center gap-1 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
+            <IdCard className="h-3.5 w-3.5" /> Guest ID Photo
+          </p>
+          {idPhotoUrl ? (
+            <a href={idPhotoUrl} target="_blank" rel="noreferrer">
+              <img src={idPhotoUrl} alt="Guest ID" className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 hover:opacity-90 dark:ring-slate-700" />
+            </a>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">No ID photo on file</p>
+          )}
         </div>
 
         {guest.notes && (
