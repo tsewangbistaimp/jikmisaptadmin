@@ -89,3 +89,20 @@ export const categoryFormSchema = z.object({
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+
+export const guestFormSchema = z.object({
+  full_name: z.string().trim().min(2, "Guest name is required"),
+  phone: z
+    .string()
+    .trim()
+    .min(7, "Enter a valid phone number")
+    .regex(/^[0-9+\-\s()]+$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  nationality: z.string().trim().optional(),
+  passport_number: z.string().trim().optional(),
+  guest_count: z.number().int().min(1, "At least 1 guest"),
+  notes: z.string().trim().optional(),
+});
+
+export type GuestFormValues = z.infer<typeof guestFormSchema>;

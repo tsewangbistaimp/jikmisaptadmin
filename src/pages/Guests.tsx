@@ -1,8 +1,12 @@
 import * as React from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, User } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { Search, User, Pencil, IdCard, ImagePlus, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input, Label, Textarea, FieldError } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { Dialog } from "@/components/ui/dialog";
@@ -10,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate, initials } from "@/lib/utils";
 import { bookingStatusTone } from "@/lib/badge-tones";
+import { guestFormSchema, type GuestFormValues } from "@/lib/schemas";
 import type { Booking, Guest, Room } from "@/lib/database.types";
 
 export default function Guests() {
@@ -18,17 +23,17 @@ export default function Guests() {
   const [loading, setLoading] = React.useState(true);
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<Guest | null>(null);
+  const [editing, setEditing] = React.useState<Guest | null>(null);
+
+  const load = React.useCallback(async () => {
+    const { data } = await supabase.from("guests").select("*").order("full_name");
+    setGuests((data as Guest[]) ?? []);
+    setLoading(false);
+  }, []);
 
   React.useEffect(() => {
-    supabase
-      .from("guests")
-      .select("*")
-      .order("full_name")
-      .then(({ data }) => {
-        setGuests((data as Guest[]) ?? []);
-        setLoading(false);
-      });
-  }, []);
+    load();
+  }, [load]);
 
   React.useEffect(() => {
     const highlight = searchParams.get("highlight");
@@ -37,6 +42,14 @@ export default function Guests() {
       if (g) setSelected(g);
     }
   }, [searchParams, guests]);
+
+  // Keep the open profile dialog in sync with the latest row after a save,
+  // instead of it showing stale data until the user closes and reopens it.
+  React.useEffect(() => {
+    if (!selected) return;
+    const fresh = guests.find((g) => g.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [guests, selected]);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -129,12 +142,27 @@ export default function Guests() {
         )}
       </Card>
 
-      <GuestProfileDialog guest={selected} onClose={() => setSelected(null)} />
+      <GuestProfileDialog guest={selected} onClose={() => setSelected(null)} onEdit={(g) => setEditing(g)} />
+
+      <GuestEditDialog
+        guest={editing}
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        onSaved={load}
+      />
     </div>
   );
 }
 
-function GuestProfileDialog({ guest, onClose }: { guest: Guest | null; onClose: () => void }) {
+function GuestProfileDialog({
+  guest,
+  onClose,
+  onEdit,
+}: {
+  guest: Guest | null;
+  onClose: () => void;
+  onEdit: (guest: Guest) => void;
+}) {
   const [bookings, setBookings] = React.useState<(Booking & { room: Room })[]>([]);
   const [loading, setLoading] = React.useState(false);
 
@@ -162,6 +190,12 @@ function GuestProfileDialog({ guest, onClose }: { guest: Guest | null; onClose: 
   return (
     <Dialog open={!!guest} onClose={onClose} title={guest.full_name} description={guest.phone ?? undefined} className="max-w-lg">
       <div className="space-y-5">
+        <div className="flex justify-end -mt-2">
+          <Button size="sm" variant="outline" onClick={() => onEdit(guest)}>
+            <Pencil className="h-3.5 w-3.5" /> Edit Guest
+          </Button>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 text-sm">
           <StatBox label="Total Visits" value={String(totalVisits)} />
           <StatBox label="Total Paid" value={formatCurrency(totalPaid)} />
@@ -208,6 +242,199 @@ function GuestProfileDialog({ guest, onClose }: { guest: Guest | null; onClose: 
           )}
         </div>
       </div>
+    </Dialog>
+  );
+}
+
+function GuestEditDialog({
+  guest,
+  open,
+  onClose,
+  onSaved,
+}: {
+  guest: Guest | null;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<GuestFormValues>({
+    resolver: zodResolver(guestFormSchema),
+    defaultValues: { full_name: "", phone: "", nationality: "", passport_number: "", guest_count: 1, notes: "" },
+  });
+
+  const [idPhotoUrl, setIdPhotoUrl] = React.useState<string | null>(null);
+  const [idPhotoPath, setIdPhotoPath] = React.useState<string | null>(null);
+  const [idPhotoUploading, setIdPhotoUploading] = React.useState(false);
+  const idFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const loadIdPhoto = React.useCallback((path: string | null | undefined) => {
+    setIdPhotoPath(path ?? null);
+    if (!path) {
+      setIdPhotoUrl(null);
+      return;
+    }
+    supabase.storage
+      .from("guest-documents")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => setIdPhotoUrl(data?.signedUrl ?? null));
+  }, []);
+
+  React.useEffect(() => {
+    if (open && guest) {
+      reset({
+        full_name: guest.full_name,
+        phone: guest.phone ?? "",
+        nationality: guest.nationality ?? "",
+        passport_number: guest.passport_number ?? "",
+        guest_count: guest.guest_count,
+        notes: guest.notes ?? "",
+      });
+      loadIdPhoto(guest.id_document_path);
+    }
+  }, [open, guest, reset, loadIdPhoto]);
+
+  const handleIdPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !guest) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image must be smaller than 8MB");
+      return;
+    }
+    setIdPhotoUploading(true);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("guest-documents").upload(path, file);
+    if (uploadError) {
+      setIdPhotoUploading(false);
+      toast.error(uploadError.message);
+      return;
+    }
+    const { error: updateError } = await supabase.from("guests").update({ id_document_path: path }).eq("id", guest.id);
+    setIdPhotoUploading(false);
+    if (updateError) {
+      toast.error(updateError.message);
+      return;
+    }
+    loadIdPhoto(path);
+    onSaved();
+    toast.success("Guest ID photo updated");
+  };
+
+  const onSubmit = async (values: GuestFormValues) => {
+    if (!guest) return;
+    const { error } = await supabase
+      .from("guests")
+      .update({
+        full_name: values.full_name,
+        phone: values.phone || null,
+        nationality: values.nationality || null,
+        passport_number: values.passport_number || null,
+        guest_count: values.guest_count,
+        notes: values.notes || null,
+      })
+      .eq("id", guest.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Guest updated");
+    onSaved();
+    onClose();
+  };
+
+  if (!guest) return null;
+
+  return (
+    <Dialog open={open} onClose={onClose} title={`Edit ${guest.full_name}`} description="Update guest details" className="max-w-lg">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <Label className="flex items-center gap-1">
+            <IdCard className="h-3.5 w-3.5" /> Guest ID
+          </Label>
+          <input ref={idFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIdPhotoChange} />
+          {idPhotoUrl ? (
+            <div className="flex items-center gap-3">
+              <a href={idPhotoUrl} target="_blank" rel="noreferrer">
+                <img src={idPhotoUrl} alt="Guest ID" className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200 hover:opacity-90" />
+              </a>
+              <button
+                type="button"
+                onClick={() => idFileInputRef.current?.click()}
+                disabled={idPhotoUploading}
+                className="text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+              >
+                {idPhotoUploading ? "Uploading…" : "Replace photo"}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => idFileInputRef.current?.click()}
+              disabled={idPhotoUploading}
+              className="flex h-20 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/40 text-brand-500 hover:border-brand-300 hover:bg-brand-50"
+            >
+              {idPhotoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              <span className="text-sm font-medium">{idPhotoUploading ? "Uploading…" : "Add guest ID photo"}</span>
+            </button>
+          )}
+        </div>
+
+        <div>
+          <Label>Full Name</Label>
+          <Input {...register("full_name")} error={errors.full_name?.message} />
+          <FieldError message={errors.full_name?.message} />
+        </div>
+
+        <div>
+          <Label>Phone</Label>
+          <Input {...register("phone")} placeholder="98XXXXXXXX" error={errors.phone?.message} />
+          <FieldError message={errors.phone?.message} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Nationality</Label>
+            <Input {...register("nationality")} error={errors.nationality?.message} />
+            <FieldError message={errors.nationality?.message} />
+          </div>
+          <div>
+            <Label>Passport / ID No.</Label>
+            <Input {...register("passport_number")} error={errors.passport_number?.message} />
+            <FieldError message={errors.passport_number?.message} />
+          </div>
+        </div>
+
+        <div>
+          <Label>Guest Count</Label>
+          <Input type="number" min={1} {...register("guest_count", { valueAsNumber: true })} error={errors.guest_count?.message} />
+          <FieldError message={errors.guest_count?.message} />
+        </div>
+
+        <div>
+          <Label>Notes</Label>
+          <Textarea {...register("notes")} rows={3} error={errors.notes?.message} />
+          <FieldError message={errors.notes?.message} />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={isSubmitting}>
+            Save Changes
+          </Button>
+        </div>
+      </form>
     </Dialog>
   );
 }
