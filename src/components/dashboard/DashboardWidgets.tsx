@@ -18,10 +18,10 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, DoorOpen, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { AnimatedNumber, DelayedFadeIn } from "@/components/ui/animated-number";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";
 
 // ---------------------------------------------------------------------------
@@ -453,5 +453,78 @@ export function ExpenseCategoryDonut({ data }: { data: { name: string; value: nu
         ))}
       </motion.div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Room Availability — one row per room showing exactly when it's free: an
+// occupied room shows the checkout date of its current booking rather than
+// just "occupied," so reception can see at a glance when a room will open up
+// without having to open the room or booking individually. Uses the same
+// stagger-in list animation as the other dashboard legend/list cards above.
+// ---------------------------------------------------------------------------
+export interface RoomAvailabilityRow {
+  id: string;
+  room_number: string;
+  room_type: string;
+  /** null/undefined = available right now. Otherwise the ISO date it frees up. */
+  availableFrom: string | null;
+  maintenance?: boolean;
+}
+
+export function RoomAvailabilityCard({ rooms }: { rooms: RoomAvailabilityRow[] }) {
+  if (rooms.length === 0) {
+    return <p className="text-sm text-slate-400 dark:text-slate-500">No rooms yet.</p>;
+  }
+
+  return (
+    <motion.div
+      variants={staggerContainer(35)}
+      initial="initial"
+      animate="animate"
+      className="w-full space-y-1.5 max-h-72 overflow-y-auto scrollbar-thin pr-1"
+    >
+      {rooms.map((r) => {
+        const isAvailable = !r.maintenance && !r.availableFrom;
+        return (
+          <motion.div
+            key={r.id}
+            variants={staggerItem}
+            className={cn(
+              "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+              isAvailable
+                ? "border-green-100 bg-green-50/60 dark:border-green-500/20 dark:bg-green-500/10"
+                : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                  isAvailable
+                    ? "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400"
+                    : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                )}
+              >
+                {isAvailable ? <DoorOpen className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                  Room {r.room_number} <span className="font-normal text-slate-400 dark:text-slate-500">· {r.room_type}</span>
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  {r.maintenance ? "Under maintenance" : isAvailable ? "Available now" : `Free from ${formatDate(r.availableFrom!)}`}
+                </p>
+              </div>
+            </div>
+            {isAvailable && !r.maintenance && (
+              <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-500/15 dark:text-green-400">
+                Free
+              </span>
+            )}
+          </motion.div>
+        );
+      })}
+    </motion.div>
   );
 }

@@ -34,6 +34,7 @@ import {
   IncomeVsExpenseChart,
   ExpenseTrendChart,
   ExpenseCategoryDonut,
+  RoomAvailabilityCard,
 } from "@/components/dashboard/DashboardWidgets";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
 import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
@@ -171,6 +172,25 @@ export default function Dashboard() {
   const underMaintenanceRooms = rooms.filter((r) => r.status === "maintenance").length;
   const occupiedRooms = rooms.filter((r) => occupiedTodayRoomIds.has(r.id)).length;
   const availableRooms = Math.max(rooms.length - occupiedRooms - underMaintenanceRooms, 0);
+
+  // For each room, find the booking (if any) currently occupying it today,
+  // so we can show the exact date it frees up instead of just "occupied" —
+  // same live, date-based logic as occupiedTodayRoomIds above, just kept
+  // per-room instead of collapsed into a count.
+  const roomAvailability = rooms
+    .map((r) => {
+      const activeBooking = activeBookings.find(
+        (b) => b.room_id === r.id && b.booking_status !== "checked_out" && b.check_in <= today && b.check_out > today
+      );
+      return {
+        id: r.id,
+        room_number: r.room_number,
+        room_type: r.room_type,
+        availableFrom: activeBooking ? activeBooking.check_out : null,
+        maintenance: r.status === "maintenance",
+      };
+    })
+    .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
 
   const thisMonth = today.slice(0, 7);
   const lastMonthDate = new Date();
@@ -372,6 +392,16 @@ export default function Dashboard() {
           )}
         </Card>
       </div>
+
+      {/* Room Availability — shows exactly when each occupied room frees up,
+          instead of just a count, so reception can plan ahead at a glance. */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Room Availability</p>
+          <DoorOpen className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+        </div>
+        <RoomAvailabilityCard rooms={roomAvailability} />
+      </Card>
 
       {/* Calendar + today's check-in/out split */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
