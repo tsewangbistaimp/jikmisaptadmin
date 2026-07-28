@@ -14,6 +14,13 @@ export function daysAgoISO(n: number) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Add `n` days to a YYYY-MM-DD date string and return the result as YYYY-MM-DD. */
+export function addDaysISO(dateISO: string, n: number) {
+  const d = new Date(dateISO + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Count how many items fall on each of the last `days` days, keyed by a date field (YYYY-MM-DD or ISO). */
 export function countByDay<T>(items: T[], dateField: (item: T) => string, days: number) {
   const buckets = new Map<string, number>();

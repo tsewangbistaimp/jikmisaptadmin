@@ -37,7 +37,7 @@ import {
   RoomAvailabilityCard,
 } from "@/components/dashboard/DashboardWidgets";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
-import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
+import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO, addDaysISO } from "@/lib/dashboard-helpers";
 import type { Room } from "@/lib/database.types";
 
 interface BookingRow {
@@ -81,11 +81,13 @@ export default function Dashboard() {
   const [statusCounts, setStatusCounts] = React.useState({ confirmed: 0, checked_in: 0, checked_out: 0, cancelled: 0 });
   const [totalBookingsAllTime, setTotalBookingsAllTime] = React.useState(0);
   const [pendingBalance, setPendingBalance] = React.useState(0);
+  const [roomBookings, setRoomBookings] = React.useState<{ room_id: string; check_in: string; check_out: string }[]>([]);
   const [granularity, setGranularity] = React.useState<Granularity>("daily");
 
   const load = React.useCallback(async () => {
     setLoading(true);
     const since = daysAgoISO(200);
+    const todayStr = todayISO();
 
     const [
       roomsRes,
@@ -98,6 +100,7 @@ export default function Dashboard() {
       cancelledRes,
       totalRes,
       pendingRes,
+      roomBookingsRes,
     ] = await Promise.all([
       supabase.from("rooms").select("*"),
       supabase
@@ -128,6 +131,17 @@ export default function Dashboard() {
         .select("remaining_balance")
         .gt("remaining_balance", 0)
         .not("booking_status", "in", "(cancelled,checked_out)"),
+      // Dedicated query for room availability — independent of the 200-day /
+      // 1000-row window above, and independent of "today". It pulls every
+      // non-cancelled, non-checked-out booking whose stay hasn't fully ended
+      // yet (check_out >= today), which is exactly what's needed to compute
+      // "next available date" per room, including bookings that start in the
+      // future (like one just created for next month).
+      supabase
+        .from("bookings")
+        .select("room_id, check_in, check_out")
+        .in("booking_status", ["confirmed", "checked_in"])
+        .gte("check_out", todayStr),
     ]);
 
     setRooms((roomsRes.data as Room[]) ?? []);
@@ -142,11 +156,28 @@ export default function Dashboard() {
     });
     setTotalBookingsAllTime(totalRes.count ?? 0);
     setPendingBalance((pendingRes.data ?? []).reduce((s: number, b: { remaining_balance: number }) => s + Number(b.remaining_balance), 0));
+    setRoomBookings((roomBookingsRes.data as { room_id: string; check_in: string; check_out: string }[]) ?? []);
     setLoading(false);
   }, []);
 
   React.useEffect(() => {
     load();
+  }, [load]);
+
+  // Live refresh: as soon as any booking is created/edited/deleted anywhere
+  // in the app (New Booking, Edit, Checkout, Delete...), refetch the
+  // dashboard so the Room Availability card (and everything else) updates
+  // immediately for anyone with the Dashboard open — no manual page reload.
+  React.useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-bookings-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
+        load();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [load]);
 
   if (loading) return <PageLoader />;
@@ -173,20 +204,30 @@ export default function Dashboard() {
   const occupiedRooms = rooms.filter((r) => occupiedTodayRoomIds.has(r.id)).length;
   const availableRooms = Math.max(rooms.length - occupiedRooms - underMaintenanceRooms, 0);
 
-  // For each room, find the booking (if any) currently occupying it today,
-  // so we can show the exact date it frees up instead of just "occupied" —
-  // same live, date-based logic as occupiedTodayRoomIds above, just kept
-  // per-room instead of collapsed into a count.
+  // For each room, find the booking that currently blocks it — the
+  // soonest confirmed/checked-in booking (by check_in) whose stay hasn't
+  // fully ended yet. This intentionally also picks up bookings that
+  // haven't started yet (check_in in the future), not just ones covering
+  // today: a room with a booking created for next month should read
+  // "Occupied" / "Available from <date after that stay>" the moment the
+  // booking is saved, not just once its check-in date arrives. Cancelled
+  // bookings are excluded by the query itself (roomBookings only ever
+  // contains "confirmed"/"checked_in" rows), and the database's own
+  // no-overlap exclusion constraint is what actually prevents double
+  // booking — this calculation only ever has to consider one booking per
+  // room at a time as a result.
   const roomAvailability = rooms
     .map((r) => {
-      const activeBooking = activeBookings.find(
-        (b) => b.room_id === r.id && b.booking_status !== "checked_out" && b.check_in <= today && b.check_out > today
-      );
+      const blocking = roomBookings
+        .filter((b) => b.room_id === r.id)
+        .sort((a, b) => (a.check_in < b.check_in ? -1 : a.check_in > b.check_in ? 1 : 0))[0];
       return {
         id: r.id,
         room_number: r.room_number,
         room_type: r.room_type,
-        availableFrom: activeBooking ? activeBooking.check_out : null,
+        // Next available date = the day after checkout, not checkout day
+        // itself, so housekeeping/turnover has that day accounted for.
+        availableFrom: blocking ? addDaysISO(blocking.check_out, 1) : null,
         maintenance: r.status === "maintenance",
       };
     })
