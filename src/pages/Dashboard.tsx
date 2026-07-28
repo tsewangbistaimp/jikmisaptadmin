@@ -204,30 +204,49 @@ export default function Dashboard() {
   const occupiedRooms = rooms.filter((r) => occupiedTodayRoomIds.has(r.id)).length;
   const availableRooms = Math.max(rooms.length - occupiedRooms - underMaintenanceRooms, 0);
 
-  // For each room, find the booking that currently blocks it — the
-  // soonest confirmed/checked-in booking (by check_in) whose stay hasn't
-  // fully ended yet. This intentionally also picks up bookings that
-  // haven't started yet (check_in in the future), not just ones covering
-  // today: a room with a booking created for next month should read
-  // "Occupied" / "Available from <date after that stay>" the moment the
-  // booking is saved, not just once its check-in date arrives. Cancelled
-  // bookings are excluded by the query itself (roomBookings only ever
-  // contains "confirmed"/"checked_in" rows), and the database's own
-  // no-overlap exclusion constraint is what actually prevents double
-  // booking — this calculation only ever has to consider one booking per
-  // room at a time as a result.
+  // For each room, work out the real next-available date by chaining
+  // together any back-to-back bookings, not just looking at a single
+  // booking in isolation. Two non-overlapping bookings for the same room
+  // (e.g. Aug 1–10, then Aug 11–Sep 11) are perfectly valid — the
+  // database's exclusion constraint only blocks actual date overlaps —
+  // but if we only ever looked at the *first* one, we'd report the room
+  // as freeing up after the first stay even though a second booking
+  // immediately continues occupying it. So we sort every relevant
+  // booking by check-in and merge any whose check-in falls on or before
+  // the running check-out into one continuous occupied stretch; the
+  // room's real availableFrom is checkout + 1 day of that whole merged
+  // stretch, not of whichever single booking happened to be earliest.
   const roomAvailability = rooms
     .map((r) => {
-      const blocking = roomBookings
+      const roomBk = roomBookings
         .filter((b) => b.room_id === r.id)
-        .sort((a, b) => (a.check_in < b.check_in ? -1 : a.check_in > b.check_in ? 1 : 0))[0];
+        .sort((a, b) => (a.check_in < b.check_in ? -1 : a.check_in > b.check_in ? 1 : 0));
+
+      let mergedCheckOut: string | null = null;
+      for (const b of roomBk) {
+        if (mergedCheckOut === null) {
+          mergedCheckOut = b.check_out;
+        } else if (b.check_in <= mergedCheckOut) {
+          // Overlapping or touching (next stay starts the same day the
+          // previous one ends) — extend the current occupied stretch.
+          if (b.check_out > mergedCheckOut) mergedCheckOut = b.check_out;
+        } else {
+          // There's a genuine gap before this booking — the merged
+          // stretch up to here is the room's current/next block, and
+          // since the list is sorted, nothing earlier can extend it
+          // further, so we can stop.
+          break;
+        }
+      }
+
       return {
         id: r.id,
         room_number: r.room_number,
         room_type: r.room_type,
-        // Next available date = the day after checkout, not checkout day
-        // itself, so housekeeping/turnover has that day accounted for.
-        availableFrom: blocking ? addDaysISO(blocking.check_out, 1) : null,
+        // Next available date = the day after the merged stretch's
+        // checkout, not checkout day itself, so turnover/cleaning has
+        // that day accounted for.
+        availableFrom: mergedCheckOut ? addDaysISO(mergedCheckOut, 1) : null,
         maintenance: r.status === "maintenance",
       };
     })
