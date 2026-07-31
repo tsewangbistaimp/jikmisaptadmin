@@ -2,7 +2,7 @@
 // from dashboard-helpers.ts because these operate over an explicit
 // [from, to] window chosen by the user (report filters), whereas
 // dashboard-helpers.ts always buckets a fixed trailing window ending today.
-import { todayISO } from "@/lib/utils";
+import { todayISO, nightsBetween } from "@/lib/utils";
 
 export type DateRangePreset = "today" | "yesterday" | "week" | "lastWeek" | "month" | "lastMonth" | "year" | "all" | "custom";
 
@@ -223,4 +223,67 @@ export function buildLedger(
     balance += r.income - r.expense;
     return { ...r, runningBalance: balance };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Monthly/Yearly Analytics helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Count "room-nights" — one per room per night actually occupied — for
+ * non-cancelled bookings, clipped to [from, to] inclusive. Used for Average
+ * Daily Revenue (ADR = revenue in range ÷ room-nights in range), which is
+ * only meaningful once you know how many nights were actually sold, not
+ * just how many bookings touched the range.
+ */
+export function roomNightsInRange<T extends { check_in: string; check_out: string; booking_status: string }>(
+  bookings: T[],
+  from: string,
+  to: string
+): number {
+  const rangeEndExclusive = new Date(to + "T00:00:00");
+  rangeEndExclusive.setDate(rangeEndExclusive.getDate() + 1);
+  const rangeEndISO = rangeEndExclusive.toISOString().slice(0, 10);
+
+  let nights = 0;
+  for (const b of bookings) {
+    if (b.booking_status === "cancelled") continue;
+    const start = b.check_in > from ? b.check_in : from;
+    const end = b.check_out < rangeEndISO ? b.check_out : rangeEndISO;
+    if (end > start) nights += nightsBetween(start, end);
+  }
+  return nights;
+}
+
+export interface RoomAggregate {
+  roomId: string;
+  bookingCount: number;
+  revenue: number;
+}
+
+/** Group non-cancelled bookings by room, summing booking count and total_amount. */
+export function aggregateByRoom<T extends { room_id: string; total_amount: number; booking_status: string }>(bookings: T[]): Map<string, RoomAggregate> {
+  const map = new Map<string, RoomAggregate>();
+  for (const b of bookings) {
+    if (b.booking_status === "cancelled") continue;
+    const existing = map.get(b.room_id) ?? { roomId: b.room_id, bookingCount: 0, revenue: 0 };
+    existing.bookingCount += 1;
+    existing.revenue += Number(b.total_amount);
+    map.set(b.room_id, existing);
+  }
+  return map;
+}
+
+/** Average nights-per-stay across non-cancelled bookings. Returns 0 if there are none. */
+export function averageStay<T extends { check_in: string; check_out: string; booking_status: string }>(bookings: T[]): number {
+  const active = bookings.filter((b) => b.booking_status !== "cancelled");
+  if (active.length === 0) return 0;
+  const totalNights = active.reduce((s, b) => s + nightsBetween(b.check_in, b.check_out), 0);
+  return totalNights / active.length;
+}
+
+/** Percentage growth from `previous` to `current`, rounded to 1 decimal place. */
+export function growthPct(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
 }

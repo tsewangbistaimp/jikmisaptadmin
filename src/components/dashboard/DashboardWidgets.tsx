@@ -45,6 +45,7 @@ export function StatCard({
   icon,
   tone,
   trend,
+  trendLabel = "this week",
   subtext,
   sparkline,
 }: {
@@ -56,6 +57,8 @@ export function StatCard({
   icon: React.ReactNode;
   tone: keyof typeof TONE_MAP;
   trend?: number;
+  /** Text shown after the trend percentage, e.g. "this week" (default), "vs last month", "vs last year". */
+  trendLabel?: string;
   subtext?: string;
   sparkline?: { label: string; count: number }[];
 }) {
@@ -74,7 +77,7 @@ export function StatCard({
         <DelayedFadeIn>
           <span className={cn("mt-2 inline-flex items-center gap-0.5 text-xs font-semibold", trend >= 0 ? "text-emerald-600" : "text-rose-600")}>
             {trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-            {Math.abs(trend)}% <span className="font-normal text-slate-400">this week</span>
+            {Math.abs(trend)}% <span className="font-normal text-slate-400">{trendLabel}</span>
           </span>
         </DelayedFadeIn>
       )}

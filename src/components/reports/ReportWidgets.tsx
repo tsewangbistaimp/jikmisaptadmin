@@ -1,7 +1,7 @@
 import * as React from "react";
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
-import { Calendar } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { BarChart, Bar, Cell, Line, LineChart, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
+import { Calendar, Filter } from "lucide-react";
+import { Input, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn, formatCurrency } from "@/lib/utils";
 import { DATE_RANGE_PRESET_LABELS, type DateRangePreset } from "@/lib/report-helpers";
@@ -93,6 +93,102 @@ export function DateRangeFilterBar({
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Generic single-series line chart — used by Yearly Analytics' profit
+// trend line, styled to match ReservationsChart's line conventions.
+// ---------------------------------------------------------------------------
+export function TrendLineChart({ data, color = "#3d63f5" }: { data: { label: string; total: number }[]; color?: string }) {
+  return (
+    <div className="h-56 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+          <Tooltip
+            formatter={(v) => formatCurrency(Number(v))}
+            contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+            labelStyle={{ fontWeight: 600, color: "#0f172a" }}
+          />
+          <ReferenceLine y={0} stroke="#cbd5e1" />
+          <Line type="monotone" dataKey="total" name="Profit" stroke={color} strokeWidth={2.5} dot={{ r: 3 }} animationDuration={700} animationEasing="ease-out" />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Advanced filters — Room / Guest / Payment Method / Expense Category. Kept
+// separate from DateRangeFilterBar since these are optional narrowing
+// filters (only the Ledger tab uses them today) rather than something every
+// tab needs. Any option left as "all" is simply ignored by the caller.
+// ---------------------------------------------------------------------------
+export interface FilterOption {
+  value: string;
+  label: string;
+}
+
+export function AdvancedFiltersBar({
+  rooms,
+  guests,
+  methods,
+  categories,
+  roomFilter,
+  guestFilter,
+  methodFilter,
+  categoryFilter,
+  onChange,
+}: {
+  rooms: FilterOption[];
+  guests: FilterOption[];
+  methods: FilterOption[];
+  categories: FilterOption[];
+  roomFilter: string;
+  guestFilter: string;
+  methodFilter: string;
+  categoryFilter: string;
+  onChange: (next: { room?: string; guest?: string; method?: string; category?: string }) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Filter className="h-4 w-4 text-slate-400" />
+      <Select value={roomFilter} onChange={(e) => onChange({ room: e.target.value })} className="h-9 w-auto px-2 text-xs">
+        <option value="all">All Rooms</option>
+        {rooms.map((r) => (
+          <option key={r.value} value={r.value}>
+            {r.label}
+          </option>
+        ))}
+      </Select>
+      <Select value={guestFilter} onChange={(e) => onChange({ guest: e.target.value })} className="h-9 w-auto px-2 text-xs">
+        <option value="all">All Guests</option>
+        {guests.map((g) => (
+          <option key={g.value} value={g.value}>
+            {g.label}
+          </option>
+        ))}
+      </Select>
+      <Select value={methodFilter} onChange={(e) => onChange({ method: e.target.value })} className="h-9 w-auto px-2 text-xs">
+        <option value="all">All Methods</option>
+        {methods.map((m) => (
+          <option key={m.value} value={m.value}>
+            {m.label}
+          </option>
+        ))}
+      </Select>
+      <Select value={categoryFilter} onChange={(e) => onChange({ category: e.target.value })} className="h-9 w-auto px-2 text-xs">
+        <option value="all">All Categories</option>
+        {categories.map((c) => (
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
+        ))}
+      </Select>
     </div>
   );
 }

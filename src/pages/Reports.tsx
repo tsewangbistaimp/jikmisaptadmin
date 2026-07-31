@@ -12,6 +12,10 @@ import {
   LayoutGrid,
   CalendarDays,
   ListTree,
+  LineChart as LineChartIcon,
+  BedDouble,
+  Award,
+  Percent,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
@@ -19,13 +23,13 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { ExportMenu } from "@/components/ui/export-menu";
-import { StatCard, RevenueBarChart, ExpenseTrendChart } from "@/components/dashboard/DashboardWidgets";
-import { ProfitTrendChart, DateRangeFilterBar, GranularityToggle } from "@/components/reports/ReportWidgets";
+import { StatCard, RevenueBarChart, ExpenseTrendChart, IncomeVsExpenseChart, ExpenseCategoryDonut } from "@/components/dashboard/DashboardWidgets";
+import { ProfitTrendChart, TrendLineChart, DateRangeFilterBar, AdvancedFiltersBar, GranularityToggle } from "@/components/reports/ReportWidgets";
 import { FinancialCalendar } from "@/components/reports/FinancialCalendar";
 import { DayDetailDialog } from "@/components/reports/DayDetailDialog";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
-import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
-import { sumByDay, sumByWeek, sumByMonth, sumByYear } from "@/lib/dashboard-helpers";
+import { PAYMENT_METHOD_LABELS, EXPENSE_PAYMENT_METHOD_LABELS } from "@/lib/constants";
+import { sumByDay, sumByWeek, sumByMonth, sumByYear, monthOverMonthChange } from "@/lib/dashboard-helpers";
 import {
   getPresetRange,
   sumInRange,
@@ -33,6 +37,10 @@ import {
   buildDailyNet,
   buildLedger,
   netTransactionAmount,
+  roomNightsInRange,
+  aggregateByRoom,
+  averageStay,
+  growthPct,
   type DateRangePreset,
 } from "@/lib/report-helpers";
 import type { Room } from "@/lib/database.types";
@@ -56,6 +64,7 @@ interface ReportBooking {
 
 interface ReportTransaction {
   id: string;
+  booking_id: string | null;
   amount: number;
   created_at: string;
   payment_method: string;
@@ -74,7 +83,7 @@ interface ReportExpense {
 }
 
 type PLGranularity = "daily" | "weekly" | "monthly" | "yearly";
-type Tab = "overview" | "calendar" | "ledger";
+type Tab = "overview" | "analytics" | "calendar" | "ledger";
 
 const PL_WINDOW: Record<PLGranularity, number> = { daily: 30, weekly: 12, monthly: 12, yearly: 5 };
 
@@ -91,6 +100,11 @@ export default function Reports() {
   const [preset, setPreset] = React.useState<DateRangePreset>("month");
   const [customFrom, setCustomFrom] = React.useState("");
   const [customTo, setCustomTo] = React.useState("");
+
+  const [roomFilter, setRoomFilter] = React.useState("all");
+  const [guestFilter, setGuestFilter] = React.useState("all");
+  const [methodFilter, setMethodFilter] = React.useState("all");
+  const [categoryFilter, setCategoryFilter] = React.useState("all");
 
   const [calendarMonth, setCalendarMonth] = React.useState(() => new Date());
   const [selectedDay, setSelectedDay] = React.useState<string | null>(null);
@@ -111,7 +125,7 @@ export default function Reports() {
         .limit(10000),
       supabase
         .from("transactions")
-        .select("id, amount, created_at, payment_method, transaction_type, booking:bookings(booking_number), guest:guests(full_name)")
+        .select("id, booking_id, amount, created_at, payment_method, transaction_type, booking:bookings(booking_number), guest:guests(full_name)")
         .order("created_at", { ascending: true })
         .limit(10000),
       supabase
@@ -198,6 +212,58 @@ export default function Reports() {
       : sumByYear(expenses, (e) => e.date, (e) => Number(e.amount), n);
   const profitSeries = incomeSeries.map((d, i) => ({ label: d.label, total: d.total - (expenseSeries[i]?.total ?? 0) }));
 
+  // ---- Monthly & Yearly Analytics ----
+  const roomById = new Map(rooms.map((r) => [r.id, r]));
+
+  const monthBookings = bookings.filter((b) => b.check_in >= monthRange.from && b.check_in <= monthRange.to);
+  const monthRoomAgg = aggregateByRoom(monthBookings);
+  let bestRoom: { room: Room | undefined; revenue: number } | null = null;
+  let mostBookedRoom: { room: Room | undefined; count: number } | null = null;
+  for (const agg of monthRoomAgg.values()) {
+    if (!bestRoom || agg.revenue > bestRoom.revenue) bestRoom = { room: roomById.get(agg.roomId), revenue: agg.revenue };
+    if (!mostBookedRoom || agg.bookingCount > mostBookedRoom.count) mostBookedRoom = { room: roomById.get(agg.roomId), count: agg.bookingCount };
+  }
+  const avgStayMonth = averageStay(monthBookings);
+  const roomNightsMonth = roomNightsInRange(bookings, monthRange.from, monthRange.to);
+  const adrMonth = roomNightsMonth > 0 ? revenueMonth / roomNightsMonth : 0;
+
+  const lastMonthRange = getPresetRange("lastMonth");
+  const revenueLastMonth = revenue(lastMonthRange.from, lastMonthRange.to);
+  const expensesLastMonth = expenseTotal(lastMonthRange.from, lastMonthRange.to);
+  const momRevenueChange = monthOverMonthChange(revenueMonth, revenueLastMonth);
+  const momExpenseChange = monthOverMonthChange(expensesMonth, expensesLastMonth);
+  const momProfitChange = monthOverMonthChange(revenueMonth - expensesMonth, revenueLastMonth - expensesLastMonth);
+
+  const lastYearFrom = `${Number(yearRange.from.slice(0, 4)) - 1}-01-01`;
+  const lastYearTo = `${Number(yearRange.from.slice(0, 4)) - 1}-12-31`;
+  const revenueLastYear = revenue(lastYearFrom, lastYearTo);
+  const expensesLastYear = expenseTotal(lastYearFrom, lastYearTo);
+  const revenueGrowthPct = growthPct(revenueYear, revenueLastYear);
+  const profitGrowthPct = growthPct(revenueYear - expensesYear, revenueLastYear - expensesLastYear);
+
+  const yearlyIncomeSeries = sumByYear(transactions, (t) => t.created_at, netTransactionAmount, 5);
+  const yearlyExpenseSeries = sumByYear(expenses, (e) => e.date, (e) => Number(e.amount), 5);
+  const yearlyCombinedSeries = yearlyIncomeSeries.map((y, i) => ({ label: y.label, income: y.total, expenses: yearlyExpenseSeries[i]?.total ?? 0 }));
+  const yearlyProfitSeries = yearlyIncomeSeries.map((y, i) => ({ label: y.label, total: y.total - (yearlyExpenseSeries[i]?.total ?? 0) }));
+
+  const allTimeRoomAgg = aggregateByRoom(activeBookings);
+  const roomRevenueShare = Array.from(allTimeRoomAgg.values())
+    .map((agg) => ({ name: roomById.get(agg.roomId)?.room_number ?? "Unknown", value: agg.revenue }))
+    .sort((a, b) => b.value - a.value);
+
+  // ---- Ledger tab filter option lists ----
+  const roomOptions = rooms.map((r) => ({ value: r.id, label: `${r.room_number} · ${r.room_type}` }));
+  const guestOptions = Array.from(new Set(transactions.map((t) => t.guest?.full_name).filter((n): n is string => !!n)))
+    .sort()
+    .map((n) => ({ value: n, label: n }));
+  const methodOptions = Array.from(new Set([...Object.keys(PAYMENT_METHOD_LABELS), ...Object.keys(EXPENSE_PAYMENT_METHOD_LABELS)])).map((v) => ({
+    value: v,
+    label: PAYMENT_METHOD_LABELS[v] ?? EXPENSE_PAYMENT_METHOD_LABELS[v] ?? v,
+  }));
+  const categoryOptions = Array.from(new Set(expenses.map((e) => e.category?.name).filter((n): n is string => !!n)))
+    .sort()
+    .map((n) => ({ value: n, label: n }));
+
   // ---- Calendar tab data ----
   const monthStart = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, "0")}-01`;
   const monthEnd = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).toISOString().slice(0, 10);
@@ -215,9 +281,33 @@ export default function Reports() {
   const dayExpenses = selectedDay ? expenses.filter((e) => e.date.slice(0, 10) === selectedDay) : [];
 
   // ---- Ledger tab data ----
+  // Room/Guest/Category are each only meaningful for one side of the
+  // ledger (a room or guest only applies to income; a category only
+  // applies to expenses) — so setting one of those narrows to just its
+  // matching row type and clears the other, rather than showing an
+  // unfiltered mix. Payment Method applies to both and simply narrows.
   const filterRange = getPresetRange(preset, { from: customFrom, to: customTo });
-  const ledgerTransactions = filterInRange(transactions, (t) => t.created_at, filterRange.from, filterRange.to);
-  const ledgerExpenses = filterInRange(expenses, (e) => e.date, filterRange.from, filterRange.to);
+  let ledgerTransactions = filterInRange(transactions, (t) => t.created_at, filterRange.from, filterRange.to);
+  let ledgerExpenses = filterInRange(expenses, (e) => e.date, filterRange.from, filterRange.to);
+
+  if (roomFilter !== "all") {
+    const roomBookingIds = new Set(bookings.filter((b) => b.room_id === roomFilter).map((b) => b.id));
+    ledgerTransactions = ledgerTransactions.filter((t) => !!t.booking_id && roomBookingIds.has(t.booking_id));
+    ledgerExpenses = [];
+  }
+  if (guestFilter !== "all") {
+    ledgerTransactions = ledgerTransactions.filter((t) => t.guest?.full_name === guestFilter);
+    ledgerExpenses = [];
+  }
+  if (categoryFilter !== "all") {
+    ledgerExpenses = ledgerExpenses.filter((e) => e.category?.name === categoryFilter);
+    ledgerTransactions = [];
+  }
+  if (methodFilter !== "all") {
+    ledgerTransactions = ledgerTransactions.filter((t) => t.payment_method === methodFilter);
+    ledgerExpenses = ledgerExpenses.filter((e) => e.payment_method === methodFilter);
+  }
+
   const ledger = buildLedger(ledgerTransactions, ledgerExpenses);
 
   const exportLedgerCsv = () => {
@@ -446,6 +536,7 @@ export default function Reports() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
             <TabButton active={tab === "overview"} onClick={() => setTab("overview")} icon={<LayoutGrid className="h-4 w-4" />} label="Overview" />
+            <TabButton active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<LineChartIcon className="h-4 w-4" />} label="Analytics" />
             <TabButton active={tab === "calendar"} onClick={() => setTab("calendar")} icon={<CalendarDays className="h-4 w-4" />} label="Calendar" />
             <TabButton active={tab === "ledger"} onClick={() => setTab("ledger")} icon={<ListTree className="h-4 w-4" />} label="Ledger" />
           </div>
@@ -527,6 +618,88 @@ export default function Reports() {
         </div>
       )}
 
+      {tab === "analytics" && (
+        <div className="space-y-6">
+          <Card className="p-5 sm:p-6">
+            <p className="mb-1 text-base font-semibold text-slate-900">Monthly Analytics</p>
+            <p className="mb-4 text-xs text-slate-400">This month, compared with last month</p>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <StatCard label="Revenue" value={formatCurrency(revenueMonth)} numeric={revenueMonth} format={formatCurrency} icon={<Wallet className="h-5 w-5" />} tone="green" trend={momRevenueChange} trendLabel="vs last month" />
+              <StatCard label="Expenses" value={formatCurrency(expensesMonth)} numeric={expensesMonth} format={formatCurrency} icon={<Receipt className="h-5 w-5" />} tone="rose" trend={momExpenseChange} trendLabel="vs last month" />
+              <StatCard
+                label="Profit"
+                value={formatCurrency(revenueMonth - expensesMonth)}
+                numeric={revenueMonth - expensesMonth}
+                format={formatCurrency}
+                icon={<PiggyBank className="h-5 w-5" />}
+                tone={revenueMonth - expensesMonth >= 0 ? "brand" : "rose"}
+                trend={momProfitChange}
+                trendLabel="vs last month"
+              />
+              <StatCard label="Occupancy Rate" value={`${occupancyRate}%`} icon={<DoorOpen className="h-5 w-5" />} tone="brand" />
+              <StatCard
+                label="Average Daily Revenue"
+                value={formatCurrency(adrMonth)}
+                numeric={adrMonth}
+                format={formatCurrency}
+                icon={<Percent className="h-5 w-5" />}
+                tone="sky"
+                subtext="Per occupied room-night"
+              />
+              <StatCard label="Average Stay" value={`${avgStayMonth.toFixed(1)} nights`} icon={<BedDouble className="h-5 w-5" />} tone="amber" />
+              <StatCard
+                label="Best Performing Room"
+                value={bestRoom?.room?.room_number ?? "—"}
+                icon={<Award className="h-5 w-5" />}
+                tone="brand"
+                subtext={bestRoom ? formatCurrency(bestRoom.revenue) : undefined}
+              />
+              <StatCard
+                label="Most Booked Room"
+                value={mostBookedRoom?.room?.room_number ?? "—"}
+                icon={<ClipboardList className="h-5 w-5" />}
+                tone="green"
+                subtext={mostBookedRoom ? `${mostBookedRoom.count} booking${mostBookedRoom.count === 1 ? "" : "s"}` : undefined}
+              />
+            </div>
+          </Card>
+
+          <Card className="p-5 sm:p-6">
+            <p className="mb-1 text-base font-semibold text-slate-900">Yearly Analytics</p>
+            <p className="mb-4 text-xs text-slate-400">This year vs. last year</p>
+            <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <StatCard label="Revenue" value={formatCurrency(revenueYear)} numeric={revenueYear} format={formatCurrency} icon={<Wallet className="h-5 w-5" />} tone="green" trend={revenueGrowthPct} trendLabel="vs last year" />
+              <StatCard label="Expenses" value={formatCurrency(expensesYear)} numeric={expensesYear} format={formatCurrency} icon={<Receipt className="h-5 w-5" />} tone="rose" />
+              <StatCard
+                label="Profit"
+                value={formatCurrency(revenueYear - expensesYear)}
+                numeric={revenueYear - expensesYear}
+                format={formatCurrency}
+                icon={<PiggyBank className="h-5 w-5" />}
+                tone={revenueYear - expensesYear >= 0 ? "brand" : "rose"}
+                trend={profitGrowthPct}
+                trendLabel="vs last year"
+              />
+              <StatCard label="Last Year Revenue" value={formatCurrency(revenueLastYear)} numeric={revenueLastYear} format={formatCurrency} icon={<TrendingUp className="h-5 w-5" />} tone="sky" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Revenue vs Expenses (5 Years)</p>
+                <IncomeVsExpenseChart data={yearlyCombinedSeries} height="h-56" showLegend={false} />
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Profit Trend (5 Years)</p>
+                <TrendLineChart data={yearlyProfitSeries} />
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Revenue by Room (All Time)</p>
+                {roomRevenueShare.length === 0 ? <EmptyState title="No bookings yet" /> : <ExpenseCategoryDonut data={roomRevenueShare} />}
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {tab === "calendar" && (
         <Card className="p-5 sm:p-6">
           <FinancialCalendar dailyNet={dailyNet} onSelectDay={setSelectedDay} month={calendarMonth} onMonthChange={setCalendarMonth} />
@@ -535,12 +708,30 @@ export default function Reports() {
 
       {tab === "ledger" && (
         <div className="space-y-4">
-          <Card className="p-4">
+          <Card className="space-y-3 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <DateRangeFilterBar preset={preset} onPresetChange={setPreset} customFrom={customFrom} customTo={customTo} onCustomChange={(f, t) => { setCustomFrom(f); setCustomTo(t); }} />
               <div className="shrink-0">
                 <ExportMenu onCsv={exportLedgerCsv} onExcel={exportLedgerExcel} onPdf={exportLedgerPdf} />
               </div>
+            </div>
+            <div className="border-t border-slate-100 pt-3">
+              <AdvancedFiltersBar
+                rooms={roomOptions}
+                guests={guestOptions}
+                methods={methodOptions}
+                categories={categoryOptions}
+                roomFilter={roomFilter}
+                guestFilter={guestFilter}
+                methodFilter={methodFilter}
+                categoryFilter={categoryFilter}
+                onChange={(next) => {
+                  if (next.room !== undefined) setRoomFilter(next.room);
+                  if (next.guest !== undefined) setGuestFilter(next.guest);
+                  if (next.method !== undefined) setMethodFilter(next.method);
+                  if (next.category !== undefined) setCategoryFilter(next.category);
+                }}
+              />
             </div>
           </Card>
 
