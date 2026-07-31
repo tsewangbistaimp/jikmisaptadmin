@@ -80,6 +80,8 @@ export const reminderFormSchema = z.object({
   due_date: z.string().trim().optional(),
   amount: z.number().min(0, "Amount can't be negative").optional(),
   priority: z.enum(["low", "medium", "high"]),
+  is_recurring: z.boolean().optional(),
+  recurrence_interval: z.enum(["weekly", "monthly", "yearly"]).optional(),
 });
 
 export type ReminderFormValues = z.infer<typeof reminderFormSchema>;

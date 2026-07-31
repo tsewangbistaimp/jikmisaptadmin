@@ -133,11 +133,14 @@ export interface AuditLog {
 export type ExpensePaymentMethod = "cash" | "bank_transfer" | "online_payment";
 export type ExpenseStatus = "paid" | "pending";
 export type ExpensePriority = "low" | "medium" | "high";
+export type RecurrenceInterval = "weekly" | "monthly" | "yearly";
 
 export interface ExpenseCategory {
   id: string;
   name: string;
   is_default: boolean;
+  /** Null = no budget set for this category (not the same as a 0 budget). */
+  monthly_budget: number | null;
   created_by: string | null;
   created_at: string;
 }
@@ -170,6 +173,8 @@ export interface ExpenseReminder {
   priority: ExpensePriority;
   is_completed: boolean;
   completed_at: string | null;
+  is_recurring: boolean;
+  recurrence_interval: RecurrenceInterval | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

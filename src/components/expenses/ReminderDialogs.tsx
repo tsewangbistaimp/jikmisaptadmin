@@ -8,6 +8,7 @@ import { Input, Label, Select, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { reminderFormSchema, type ReminderFormValues } from "@/lib/schemas";
+import { RECURRENCE_LABELS } from "@/lib/constants";
 import type { ExpenseReminder } from "@/lib/database.types";
 
 // ---------------------------------------------------------------------------
@@ -28,11 +29,14 @@ export function ReminderFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ReminderFormValues>({
     resolver: zodResolver(reminderFormSchema),
-    defaultValues: { title: "", due_date: "", amount: undefined, priority: "medium" },
+    defaultValues: { title: "", due_date: "", amount: undefined, priority: "medium", is_recurring: false, recurrence_interval: "monthly" },
   });
+
+  const isRecurring = watch("is_recurring");
 
   React.useEffect(() => {
     if (!open) return;
@@ -43,8 +47,10 @@ export function ReminderFormDialog({
             due_date: reminder.due_date ?? "",
             amount: reminder.amount ?? undefined,
             priority: reminder.priority,
+            is_recurring: reminder.is_recurring,
+            recurrence_interval: reminder.recurrence_interval ?? "monthly",
           }
-        : { title: "", due_date: "", amount: undefined, priority: "medium" }
+        : { title: "", due_date: "", amount: undefined, priority: "medium", is_recurring: false, recurrence_interval: "monthly" }
     );
   }, [open, reminder, reset]);
 
@@ -54,6 +60,8 @@ export function ReminderFormDialog({
       due_date: values.due_date || null,
       amount: values.amount ?? null,
       priority: values.priority,
+      is_recurring: values.is_recurring ?? false,
+      recurrence_interval: values.is_recurring ? values.recurrence_interval ?? "monthly" : null,
     };
     const { error } = reminder
       ? await supabase.from("expense_reminders").update(payload).eq("id", reminder.id)
@@ -93,6 +101,24 @@ export function ReminderFormDialog({
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </Select>
+        </div>
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" {...register("is_recurring")} className="h-4 w-4 rounded border-slate-300 text-brand-500 focus:ring-brand-400" />
+            Repeats
+          </label>
+          {isRecurring && (
+            <div className="mt-2">
+              <Select {...register("recurrence_interval")}>
+                {Object.entries(RECURRENCE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-xs text-slate-400">A new reminder is created automatically each time this one is marked done.</p>
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

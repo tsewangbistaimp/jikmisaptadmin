@@ -79,6 +79,15 @@ export function relativeTime(date: string | Date) {
   return formatDate(d);
 }
 
+/** Advance a YYYY-MM-DD date by one recurrence interval, returning YYYY-MM-DD. */
+export function advanceDate(dateISO: string, interval: "weekly" | "monthly" | "yearly") {
+  const d = new Date(dateISO + "T00:00:00");
+  if (interval === "weekly") d.setDate(d.getDate() + 7);
+  else if (interval === "monthly") d.setMonth(d.getMonth() + 1);
+  else d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 export function initials(name: string) {
   return name
     .split(" ")

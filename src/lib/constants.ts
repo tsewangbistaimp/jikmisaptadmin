@@ -59,3 +59,25 @@ export const EXPENSE_PRIORITY_LABELS: Record<string, string> = {
   medium: "Medium",
   high: "High",
 };
+
+export const RECURRENCE_LABELS: Record<string, string> = {
+  weekly: "Weekly",
+  monthly: "Monthly",
+  yearly: "Yearly",
+};
+
+/** Category names to spotlight in the Expenses page's "Utility Tracking"
+ *  section — matches the default categories seeded in
+ *  20260711040000_expenses.sql. Any category not in this list (custom
+ *  ones admins add) simply won't appear there, which is intentional:
+ *  this section is specifically about recurring utility-style bills. */
+export const UTILITY_CATEGORY_NAMES = [
+  "Electricity Bill",
+  "Water Bill",
+  "Internet/WiFi Bill",
+  "Gas Bill",
+  "Maintenance & Repair",
+  "Cleaning Supplies",
+  "Staff Salary",
+  "Other Expenses",
+];
