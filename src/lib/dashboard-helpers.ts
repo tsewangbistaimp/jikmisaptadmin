@@ -135,3 +135,48 @@ export function monthOverMonthChange(current: number, previous: number) {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Math.round(((current - previous) / previous) * 100);
 }
+
+/** Sum a numeric field per ISO week (Sun–Sat) for the last `weeks` weeks. Mirrors countByWeek's bucketing. */
+export function sumByWeek<T>(items: T[], dateField: (item: T) => string, valueField: (item: T) => number, weeks: number) {
+  const today = toDateOnly(new Date());
+  const startOfThisWeek = new Date(today);
+  startOfThisWeek.setDate(today.getDate() - today.getDay());
+
+  const buckets: { start: Date; label: string; total: number }[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = new Date(startOfThisWeek.getTime() - i * 7 * DAY_MS);
+    buckets.push({ start, label: start.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), total: 0 });
+  }
+
+  for (const item of items) {
+    const raw = dateField(item);
+    if (!raw) continue;
+    const d = toDateOnly(new Date(raw));
+    for (const bucket of buckets) {
+      const end = new Date(bucket.start.getTime() + 7 * DAY_MS);
+      if (d >= bucket.start && d < end) {
+        bucket.total += valueField(item);
+        break;
+      }
+    }
+  }
+
+  return buckets.map((b) => ({ label: b.label, total: b.total }));
+}
+
+/** Sum a numeric field per calendar year for the last `years` years (inclusive of the current year). */
+export function sumByYear<T>(items: T[], dateField: (item: T) => string, valueField: (item: T) => number, years: number) {
+  const currentYear = new Date().getFullYear();
+  const buckets: { year: number; label: string; total: number }[] = [];
+  for (let i = years - 1; i >= 0; i--) {
+    buckets.push({ year: currentYear - i, label: String(currentYear - i), total: 0 });
+  }
+  for (const item of items) {
+    const raw = dateField(item);
+    if (!raw) continue;
+    const y = new Date(raw).getFullYear();
+    const bucket = buckets.find((b) => b.year === y);
+    if (bucket) bucket.total += valueField(item);
+  }
+  return buckets.map((b) => ({ label: b.label, total: b.total }));
+}

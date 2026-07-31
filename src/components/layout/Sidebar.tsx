@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronUp,
   Receipt,
+  BarChart3,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/transactions", label: "Transactions", icon: CreditCard },
       { to: "/expenses", label: "Expenses", icon: Receipt },
+      { to: "/reports", label: "Reports", icon: BarChart3 },
     ],
   },
 ];
