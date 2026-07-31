@@ -22,7 +22,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
-import { formatCurrency, formatDate, relativeTime, todayISO, cn } from "@/lib/utils";
+import { formatCurrency, relativeTime, todayISO, cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import {
   StatCard,
@@ -34,10 +34,9 @@ import {
   IncomeVsExpenseChart,
   ExpenseTrendChart,
   ExpenseCategoryDonut,
-  RoomAvailabilityCard,
 } from "@/components/dashboard/DashboardWidgets";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
-import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO, addDaysISO } from "@/lib/dashboard-helpers";
+import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
 import type { Room } from "@/lib/database.types";
 
 interface BookingRow {
@@ -81,13 +80,11 @@ export default function Dashboard() {
   const [statusCounts, setStatusCounts] = React.useState({ confirmed: 0, checked_in: 0, checked_out: 0, cancelled: 0 });
   const [totalBookingsAllTime, setTotalBookingsAllTime] = React.useState(0);
   const [pendingBalance, setPendingBalance] = React.useState(0);
-  const [roomBookings, setRoomBookings] = React.useState<{ room_id: string; check_in: string; check_out: string }[]>([]);
   const [granularity, setGranularity] = React.useState<Granularity>("daily");
 
   const load = React.useCallback(async () => {
     setLoading(true);
     const since = daysAgoISO(200);
-    const todayStr = todayISO();
 
     const [
       roomsRes,
@@ -100,7 +97,6 @@ export default function Dashboard() {
       cancelledRes,
       totalRes,
       pendingRes,
-      roomBookingsRes,
     ] = await Promise.all([
       supabase.from("rooms").select("*"),
       supabase
@@ -131,17 +127,6 @@ export default function Dashboard() {
         .select("remaining_balance")
         .gt("remaining_balance", 0)
         .not("booking_status", "in", "(cancelled,checked_out)"),
-      // Dedicated query for room availability — independent of the 200-day /
-      // 1000-row window above, and independent of "today". It pulls every
-      // non-cancelled, non-checked-out booking whose stay hasn't fully ended
-      // yet (check_out >= today), which is exactly what's needed to compute
-      // "next available date" per room, including bookings that start in the
-      // future (like one just created for next month).
-      supabase
-        .from("bookings")
-        .select("room_id, check_in, check_out")
-        .in("booking_status", ["confirmed", "checked_in"])
-        .gte("check_out", todayStr),
     ]);
 
     setRooms((roomsRes.data as Room[]) ?? []);
@@ -156,7 +141,6 @@ export default function Dashboard() {
     });
     setTotalBookingsAllTime(totalRes.count ?? 0);
     setPendingBalance((pendingRes.data ?? []).reduce((s: number, b: { remaining_balance: number }) => s + Number(b.remaining_balance), 0));
-    setRoomBookings((roomBookingsRes.data as { room_id: string; check_in: string; check_out: string }[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -166,8 +150,8 @@ export default function Dashboard() {
 
   // Live refresh: as soon as any booking is created/edited/deleted anywhere
   // in the app (New Booking, Edit, Checkout, Delete...), refetch the
-  // dashboard so the Room Availability card (and everything else) updates
-  // immediately for anyone with the Dashboard open — no manual page reload.
+  // dashboard so stats stay current for anyone with it open — no manual
+  // page reload needed.
   React.useEffect(() => {
     const channel = supabase
       .channel("dashboard-bookings-live")
@@ -203,54 +187,6 @@ export default function Dashboard() {
   const underMaintenanceRooms = rooms.filter((r) => r.status === "maintenance").length;
   const occupiedRooms = rooms.filter((r) => occupiedTodayRoomIds.has(r.id)).length;
   const availableRooms = Math.max(rooms.length - occupiedRooms - underMaintenanceRooms, 0);
-
-  // For each room, work out the real next-available date by chaining
-  // together any back-to-back bookings, not just looking at a single
-  // booking in isolation. Two non-overlapping bookings for the same room
-  // (e.g. Aug 1–10, then Aug 11–Sep 11) are perfectly valid — the
-  // database's exclusion constraint only blocks actual date overlaps —
-  // but if we only ever looked at the *first* one, we'd report the room
-  // as freeing up after the first stay even though a second booking
-  // immediately continues occupying it. So we sort every relevant
-  // booking by check-in and merge any whose check-in falls on or before
-  // the running check-out into one continuous occupied stretch; the
-  // room's real availableFrom is checkout + 1 day of that whole merged
-  // stretch, not of whichever single booking happened to be earliest.
-  const roomAvailability = rooms
-    .map((r) => {
-      const roomBk = roomBookings
-        .filter((b) => b.room_id === r.id)
-        .sort((a, b) => (a.check_in < b.check_in ? -1 : a.check_in > b.check_in ? 1 : 0));
-
-      let mergedCheckOut: string | null = null;
-      for (const b of roomBk) {
-        if (mergedCheckOut === null) {
-          mergedCheckOut = b.check_out;
-        } else if (b.check_in <= mergedCheckOut) {
-          // Overlapping or touching (next stay starts the same day the
-          // previous one ends) — extend the current occupied stretch.
-          if (b.check_out > mergedCheckOut) mergedCheckOut = b.check_out;
-        } else {
-          // There's a genuine gap before this booking — the merged
-          // stretch up to here is the room's current/next block, and
-          // since the list is sorted, nothing earlier can extend it
-          // further, so we can stop.
-          break;
-        }
-      }
-
-      return {
-        id: r.id,
-        room_number: r.room_number,
-        room_type: r.room_type,
-        // Next available date = the day after the merged stretch's
-        // checkout, not checkout day itself, so turnover/cleaning has
-        // that day accounted for.
-        availableFrom: mergedCheckOut ? addDaysISO(mergedCheckOut, 1) : null,
-        maintenance: r.status === "maintenance",
-      };
-    })
-    .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
 
   const thisMonth = today.slice(0, 7);
   const lastMonthDate = new Date();
@@ -452,16 +388,6 @@ export default function Dashboard() {
           )}
         </Card>
       </div>
-
-      {/* Room Availability — shows exactly when each occupied room frees up,
-          instead of just a count, so reception can plan ahead at a glance. */}
-      <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Room Availability</p>
-          <DoorOpen className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-        </div>
-        <RoomAvailabilityCard rooms={roomAvailability} />
-      </Card>
 
       {/* Calendar + today's check-in/out split */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

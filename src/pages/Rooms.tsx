@@ -10,9 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, FieldError } from "@/components/ui/input";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
+import { RoomCalendar } from "@/components/rooms/RoomCalendar";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, formatDate, todayISO, cn } from "@/lib/utils";
+import { addDaysISO } from "@/lib/dashboard-helpers";
 import { roomStatusTone } from "@/lib/badge-tones";
 import { ROOM_STATUS_LABELS, ADMIN_ROOM_STATUS_OPTIONS } from "@/lib/constants";
 import { roomFormSchema, type RoomFormValues } from "@/lib/schemas";
@@ -25,6 +27,7 @@ export default function Rooms() {
   const [loading, setLoading] = React.useState(true);
   const [editing, setEditing] = React.useState<Room | "new" | null>(null);
   const [deleting, setDeleting] = React.useState<Room | null>(null);
+  const [viewing, setViewing] = React.useState<Room | null>(null);
   const [highlightId, setHighlightId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
@@ -72,8 +75,9 @@ export default function Rooms() {
           {rooms.map((r) => (
             <Card
               key={r.id}
+              onClick={() => setViewing(r)}
               className={cn(
-                "p-5 transition-shadow",
+                "cursor-pointer p-5 transition-shadow hover:shadow-lg",
                 highlightId === r.id && "ring-2 ring-brand-400"
               )}
             >
@@ -95,10 +99,25 @@ export default function Rooms() {
 
               {isAdmin && (
                 <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditing(r)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(r);
+                    }}
+                  >
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setDeleting(r)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleting(r);
+                    }}
+                  >
                     <Trash2 className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
                   </Button>
                 </div>
@@ -107,6 +126,8 @@ export default function Rooms() {
           ))}
         </div>
       )}
+
+      <RoomDetailDialog room={viewing} onClose={() => setViewing(null)} />
 
       <RoomFormDialog
         room={editing === "new" ? null : editing}
@@ -134,6 +155,92 @@ export default function Rooms() {
         }}
       />
     </div>
+  );
+}
+
+function RoomDetailDialog({ room, onClose }: { room: Room | null; onClose: () => void }) {
+  const [bookings, setBookings] = React.useState<{ check_in: string; check_out: string }[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!room) return;
+    setLoading(true);
+    supabase
+      .from("bookings")
+      .select("check_in, check_out")
+      .eq("room_id", room.id)
+      .in("booking_status", ["confirmed", "checked_in"])
+      .order("check_in")
+      .then(({ data }) => {
+        setBookings((data as { check_in: string; check_out: string }[]) ?? []);
+        setLoading(false);
+      });
+  }, [room]);
+
+  if (!room) return null;
+
+  const today = todayISO();
+
+  // Same chaining logic as the availability calc used elsewhere: two
+  // non-overlapping bookings for this room (e.g. one ending Aug 10, the
+  // next starting Aug 11) are merged into one continuous occupied
+  // stretch so "Available From" reflects the whole run of bookings, not
+  // just whichever one happens to be earliest.
+  const relevant = bookings
+    .filter((b) => b.check_out >= today)
+    .sort((a, b) => (a.check_in < b.check_in ? -1 : a.check_in > b.check_in ? 1 : 0));
+
+  let mergedCheckOut: string | null = null;
+  for (const b of relevant) {
+    if (mergedCheckOut === null) {
+      mergedCheckOut = b.check_out;
+    } else if (b.check_in <= mergedCheckOut) {
+      if (b.check_out > mergedCheckOut) mergedCheckOut = b.check_out;
+    } else {
+      break;
+    }
+  }
+
+  const isMaintenance = room.status === "maintenance";
+  const isAvailable = !isMaintenance && !mergedCheckOut;
+  const availableFrom = mergedCheckOut ? addDaysISO(mergedCheckOut, 1) : null;
+
+  return (
+    <Dialog open={!!room} onClose={onClose} title={`Room ${room.room_number}`} description={room.room_type} className="max-w-md">
+      <div className="space-y-5">
+        <div className="relative h-40 w-full overflow-hidden rounded-xl">
+          {room.image_url ? (
+            <img src={room.image_url} alt={`Room ${room.room_number}`} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300 dark:bg-slate-900 dark:text-slate-700">
+              <DoorClosed className="h-10 w-10" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Nightly Rate</p>
+            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.price)}</p>
+          </div>
+          <Badge tone={isMaintenance ? "amber" : isAvailable ? "green" : "slate"} className="capitalize">
+            {isMaintenance ? "Under Maintenance" : isAvailable ? "Available now" : "Occupied"}
+          </Badge>
+        </div>
+
+        {!isMaintenance && !isAvailable && availableFrom && (
+          <div className="rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
+            <p className="text-xs text-slate-400 dark:text-slate-500">Available From</p>
+            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{formatDate(availableFrom)}</p>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Booking Calendar</p>
+          {loading ? <PageLoader rows={3} /> : <RoomCalendar bookedRanges={bookings} />}
+        </div>
+      </div>
+    </Dialog>
   );
 }
 
