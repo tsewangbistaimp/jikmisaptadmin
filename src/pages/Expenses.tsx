@@ -2,7 +2,6 @@ import * as React from "react";
 import { toast } from "sonner";
 import {
   Search,
-  Download,
   Plus,
   Pencil,
   Trash2,
@@ -26,6 +25,7 @@ import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { StatCard, GradientStatCard } from "@/components/dashboard/DashboardWidgets";
 import { ExpenseFormDialog, DeleteExpenseDialog } from "@/components/expenses/ExpenseDialogs";
 import { ReminderFormDialog, DeleteReminderDialog } from "@/components/expenses/ReminderDialogs";
+import { ExportMenu } from "@/components/ui/export-menu";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, formatDate, todayISO, cn } from "@/lib/utils";
@@ -193,6 +193,62 @@ export default function Expenses() {
     URL.revokeObjectURL(url);
   };
 
+  const exportExcel = async () => {
+    const { downloadExcelWorkbook } = await import("@/lib/export-excel");
+    downloadExcelWorkbook(`expenses-${new Date().toISOString().slice(0, 10)}.xlsx`, [
+      {
+        name: "Expenses",
+        columns: [
+          { header: "Title", key: "title" },
+          { header: "Category", key: "category" },
+          { header: "Amount", key: "amount", numeric: true },
+          { header: "Date", key: "date" },
+          { header: "Payment Method", key: "method" },
+          { header: "Paid By", key: "paidBy" },
+          { header: "Status", key: "status" },
+          { header: "Description", key: "description" },
+        ],
+        rows: filtered.map((e) => ({
+          title: e.title,
+          category: e.category?.name ?? "",
+          amount: Number(e.amount),
+          date: e.date,
+          method: EXPENSE_PAYMENT_METHOD_LABELS[e.payment_method],
+          paidBy: e.paid_by ?? "",
+          status: EXPENSE_STATUS_LABELS[e.status],
+          description: e.description ?? "",
+        })),
+      },
+    ]);
+  };
+
+  const exportPdf = async () => {
+    const { downloadPdfReport } = await import("@/lib/export-pdf");
+    downloadPdfReport({
+      title: "Expenses Report",
+      subtitle: `${filtered.length} expenses`,
+      summary: [
+        { label: "Total Amount", value: formatCurrency(filteredTotal), tone: "negative" },
+        { label: "Expenses", value: String(filtered.length) },
+        { label: "Pending", value: `${stats.pendingCount} · ${formatCurrency(stats.pendingTotal)}` },
+      ],
+      sections: [
+        {
+          columns: ["Title", "Category", "Amount", "Date", "Method", "Status"],
+          rows: filtered.map((e) => [
+            e.title,
+            e.category?.name ?? "—",
+            formatCurrency(e.amount),
+            formatDate(e.date),
+            EXPENSE_PAYMENT_METHOD_LABELS[e.payment_method],
+            EXPENSE_STATUS_LABELS[e.status],
+          ]),
+        },
+      ],
+      filename: `expenses-${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
+  };
+
   const viewReceipt = async (path: string) => {
     const { data, error } = await supabase.storage.from("expense-receipts").createSignedUrl(path, 300);
     if (error || !data?.signedUrl) {
@@ -225,9 +281,7 @@ export default function Expenses() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Track apartment spending and stay on top of upcoming bills</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
+          <ExportMenu onCsv={exportCsv} onExcel={exportExcel} onPdf={exportPdf} />
           {isAdmin && (
             <Button size="sm" onClick={() => setEditingExpense("new")}>
               <Plus className="h-4 w-4" /> Add Expense

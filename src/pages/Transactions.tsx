@@ -1,10 +1,10 @@
 import * as React from "react";
-import { Search, Download } from "lucide-react";
+import { Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
+import { ExportMenu } from "@/components/ui/export-menu";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
@@ -88,6 +88,59 @@ export default function Transactions() {
     URL.revokeObjectURL(url);
   };
 
+  // Excel/PDF generation libraries are only fetched when the user actually
+  // asks to export (dynamic import), so the Transactions page itself stays
+  // fast to load — most visits never touch these buttons.
+  const exportExcel = async () => {
+    const { downloadExcelWorkbook } = await import("@/lib/export-excel");
+    downloadExcelWorkbook(`transactions-${new Date().toISOString().slice(0, 10)}.xlsx`, [
+      {
+        name: "Transactions",
+        columns: [
+          { header: "Booking", key: "booking" },
+          { header: "Guest", key: "guest" },
+          { header: "Amount", key: "amount", numeric: true },
+          { header: "Payment Method", key: "method" },
+          { header: "Type", key: "type" },
+          { header: "Date", key: "date" },
+          { header: "Notes", key: "notes" },
+        ],
+        rows: filtered.map((t) => ({
+          booking: t.booking?.booking_number ?? "",
+          guest: t.guest?.full_name ?? "",
+          amount: Number(t.amount),
+          method: PAYMENT_METHOD_LABELS[t.payment_method],
+          type: t.transaction_type,
+          date: formatDateTime(t.created_at),
+          notes: t.notes ?? "",
+        })),
+      },
+    ]);
+  };
+
+  const exportPdf = async () => {
+    const { downloadPdfReport } = await import("@/lib/export-pdf");
+    downloadPdfReport({
+      title: "Transactions Report",
+      subtitle: `${filtered.length} transactions${range !== "all" ? ` · ${range === "today" ? "Today" : range === "week" ? "This Week" : "This Month"}` : ""}`,
+      summary: [{ label: "Total Amount", value: formatCurrency(total) }, { label: "Transactions", value: String(filtered.length) }],
+      sections: [
+        {
+          columns: ["Booking", "Guest", "Amount", "Method", "Type", "Date"],
+          rows: filtered.map((t) => [
+            t.booking?.booking_number ?? "—",
+            t.guest?.full_name ?? "—",
+            formatCurrency(t.amount),
+            PAYMENT_METHOD_LABELS[t.payment_method],
+            t.transaction_type,
+            formatDateTime(t.created_at),
+          ]),
+        },
+      ],
+      filename: `transactions-${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -97,9 +150,7 @@ export default function Transactions() {
             {filtered.length} transactions · {formatCurrency(total)} total
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportCsv}>
-          <Download className="h-4 w-4" /> Export CSV
-        </Button>
+        <ExportMenu onCsv={exportCsv} onExcel={exportExcel} onPdf={exportPdf} />
       </div>
 
       <Card className="p-4">
