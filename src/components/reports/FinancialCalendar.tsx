@@ -64,15 +64,15 @@ export function FinancialCalendar({
         <button
           onClick={() => onMonthChange(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
           aria-label="Previous month"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <p className="text-sm font-semibold text-slate-800">{MONTH_LABEL.format(month)}</p>
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{MONTH_LABEL.format(month)}</p>
         <button
           onClick={() => onMonthChange(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
           aria-label="Next month"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -80,7 +80,7 @@ export function FinancialCalendar({
 
       <div className="grid grid-cols-7 gap-1 text-center">
         {WEEKDAYS.map((w) => (
-          <p key={w} className="text-[11px] font-medium text-slate-400">
+          <p key={w} className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
             {w}
           </p>
         ))}
@@ -100,10 +100,10 @@ export function FinancialCalendar({
               onClick={() => inMonth && onSelectDay(iso)}
               className={cn(
                 "flex aspect-square flex-col items-center justify-center rounded-xl text-xs transition-colors",
-                !inMonth && "cursor-default text-slate-300",
-                inMonth && !hasActivity && "text-slate-500 hover:bg-slate-50",
-                inMonth && isProfit && "bg-emerald-50 font-medium text-emerald-700 hover:bg-emerald-100",
-                inMonth && isLoss && "bg-rose-50 font-medium text-rose-700 hover:bg-rose-100",
+                !inMonth && "cursor-default text-slate-300 dark:text-slate-600",
+                inMonth && !hasActivity && "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800",
+                inMonth && isProfit && "bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100",
+                inMonth && isLoss && "bg-rose-50 dark:bg-rose-500/10 font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-100",
                 isToday && "ring-2 ring-brand-400"
               )}
             >
@@ -114,7 +114,7 @@ export function FinancialCalendar({
         })}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-400">
+      <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-100" /> Profit
         </span>
@@ -122,7 +122,7 @@ export function FinancialCalendar({
           <span className="h-2.5 w-2.5 rounded-full bg-rose-100" /> Loss
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-slate-100" /> No Activity
+          <span className="h-2.5 w-2.5 rounded-full bg-slate-100 dark:bg-slate-800" /> No Activity
         </span>
       </div>
     </div>

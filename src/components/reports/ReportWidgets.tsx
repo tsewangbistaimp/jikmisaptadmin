@@ -65,7 +65,7 @@ export function DateRangeFilterBar({
             onClick={() => onPresetChange(p)}
             className={cn(
               "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              preset === p ? "bg-brand-500 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              preset === p ? "bg-brand-500 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
             )}
           >
             {DATE_RANGE_PRESET_LABELS[p]}
@@ -73,14 +73,14 @@ export function DateRangeFilterBar({
         ))}
       </div>
       <div className="flex items-center gap-1.5">
-        <Calendar className="hidden h-4 w-4 text-slate-400 sm:block" />
+        <Calendar className="hidden h-4 w-4 text-slate-400 dark:text-slate-500 sm:block" />
         <Input
           type="date"
           value={customFrom}
           onChange={(e) => onCustomChange(e.target.value, customTo)}
           className="h-9 w-[9.5rem] px-2 text-xs"
         />
-        <span className="text-xs text-slate-400">to</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">to</span>
         <Input
           type="date"
           value={customTo}
@@ -156,7 +156,7 @@ export function AdvancedFiltersBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Filter className="h-4 w-4 text-slate-400" />
+      <Filter className="h-4 w-4 text-slate-400 dark:text-slate-500" />
       <Select value={roomFilter} onChange={(e) => onChange({ room: e.target.value })} className="h-9 w-auto px-2 text-xs">
         <option value="all">All Rooms</option>
         {rooms.map((r) => (
@@ -203,14 +203,14 @@ export function GranularityToggle<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
+    <div className="flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5">
       {options.map((g) => (
         <button
           key={g}
           onClick={() => onChange(g)}
           className={cn(
             "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-            value === g ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            value === g ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
           )}
         >
           {g}

@@ -23,6 +23,46 @@
   --color-accent-amber-500: #fbbf24;
   --color-accent-rose-50: #fff1f2;
   --color-accent-rose-500: #fb7185;
+
+  /* Deep Navy — the enterprise/luxury complement to brand-blue. Used for
+     high-contrast chrome (sidebar in its "premium" mode, dark-mode
+     surfaces, footers) rather than as the interactive accent, which stays
+     brand-blue so every existing focus ring / active state / link color
+     keeps working unchanged. */
+  --color-navy-50: #eef1f8;
+  --color-navy-100: #d7deed;
+  --color-navy-200: #adbcdb;
+  --color-navy-300: #7e93c0;
+  --color-navy-400: #4d699e;
+  --color-navy-500: #2c4a7c;
+  --color-navy-600: #1e3760;
+  --color-navy-700: #152848;
+  --color-navy-800: #0f1d35;
+  --color-navy-900: #0a1526;
+
+  /* Gold — luxury accent for premium-tier highlights (VIP badges, featured
+     stats, subtle borders). Distinct from --color-accent-amber, which
+     remains the semantic "warning" color everywhere it's already used. */
+  --color-gold-50: #fdf8ec;
+  --color-gold-100: #f8ecc9;
+  --color-gold-200: #f0d78e;
+  --color-gold-300: #e6c159;
+  --color-gold-400: #d9a934;
+  --color-gold-500: #c1922a;
+  --color-gold-600: #9c7420;
+  --color-gold-700: #785819;
+  --color-gold-800: #574012;
+  --color-gold-900: #3a2b0c;
+
+  /* Emerald — luxury "success"-adjacent accent (distinct token from the
+     existing semantic green used for success states), for premium finance
+     widgets (profit highlights, positive trend chips). */
+  --color-emerald-luxe-50: #ecfdf6;
+  --color-emerald-luxe-100: #d1faea;
+  --color-emerald-luxe-300: #6ee7c4;
+  --color-emerald-luxe-500: #0f9d76;
+  --color-emerald-luxe-600: #0b7d5e;
+  --color-emerald-luxe-700: #0a5f48;
 }
 
 html {
@@ -51,6 +91,18 @@ body {
 }
 .dark .card-shadow {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+}
+
+/* Premium frosted-glass surface — used sparingly for floating chrome
+   (sticky topbar, floating mobile nav already uses a bespoke version of
+   this) so it reads as "elevated" without a heavy opaque panel. */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+.dark .glass-surface {
+  background: rgba(15, 23, 42, 0.72);
 }
 
 /* Colorful gradient "wallet card" style — inspired by the reference dashboard's

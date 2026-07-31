@@ -11,7 +11,7 @@ import { fadeUp } from "@/lib/motion";
  * Entrance only plays once per mount (stable `key`s mean it won't replay
  * on every re-render), and the hover lift is a pure `transform` (GPU).
  */
-export function Card({ className, ...props }: HTMLMotionProps<"div">) {
+export function Card({ className, glass, ...props }: HTMLMotionProps<"div"> & { glass?: boolean }) {
   return (
     <motion.div
       variants={fadeUp}
@@ -20,7 +20,8 @@ export function Card({ className, ...props }: HTMLMotionProps<"div">) {
       whileHover={{ y: -3 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
       className={cn(
-        "rounded-3xl border border-slate-200 bg-white card-shadow transition-shadow duration-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900",
+        "rounded-3xl border card-shadow transition-shadow duration-200 hover:shadow-lg",
+        glass ? "glass-surface border-white/40 dark:border-white/10" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
         className
       )}
       {...props}

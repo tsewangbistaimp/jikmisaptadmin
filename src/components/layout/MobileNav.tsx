@@ -15,9 +15,12 @@ import {
   X,
   Receipt,
   BarChart3,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { backdropFade, sheetVariants, SPRING_SNAPPY } from "@/lib/motion";
 
 const tabs = [
@@ -29,6 +32,7 @@ const tabs = [
 
 export function MobileNav() {
   const { isAdmin, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = React.useState(false);
@@ -124,6 +128,14 @@ export function MobileNav() {
               <MoreLink to="/reports" label="Reports" icon={BarChart3} onClick={() => setMoreOpen(false)} />
               <MoreLink to="/services" label="Services" icon={Sparkles} onClick={() => setMoreOpen(false)} />
               {isAdmin && <MoreLink to="/settings/users" label="Settings & Staff" icon={Settings} onClick={() => setMoreOpen(false)} />}
+
+              <button
+                onClick={toggleTheme}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              </button>
 
               <button
                 onClick={async () => {

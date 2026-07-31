@@ -663,8 +663,8 @@ export default function Reports() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Reports</h1>
-          <p className="text-sm text-slate-500">Revenue, expenses, and profit across your whole operation</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Reports</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Revenue, expenses, and profit across your whole operation</p>
         </div>
         <div className="shrink-0 self-start sm:self-auto">
           <ExportMenu label="Export Report" onExcel={exportFullExcel} onPdf={exportFullPdf} />
@@ -676,7 +676,7 @@ export default function Reports() {
           The -mx-4 px-4 bleed matches AppLayout's mobile page padding so the
           strip reaches the screen edges for a natural swipe area. */}
       <div className="-mx-4 overflow-x-auto scrollbar-none px-4 sm:mx-0 sm:overflow-visible sm:px-0">
-        <div className="flex w-max gap-1 rounded-xl bg-slate-100 p-1">
+        <div className="flex w-max gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
           <TabButton active={tab === "overview"} onClick={() => setTab("overview")} icon={<LayoutGrid className="h-4 w-4" />} label="Overview" />
           <TabButton active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<LineChartIcon className="h-4 w-4" />} label="Analytics" />
           <TabButton active={tab === "calendar"} onClick={() => setTab("calendar")} icon={<CalendarDays className="h-4 w-4" />} label="Calendar" />
@@ -736,22 +736,22 @@ export default function Reports() {
           <Card className="p-5 sm:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-base font-semibold text-slate-900">Profit &amp; Loss</p>
-                <p className="text-xs text-slate-400">Revenue − Expenses = Net Profit</p>
+                <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Profit &amp; Loss</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Revenue − Expenses = Net Profit</p>
               </div>
               <GranularityToggle value={plGranularity} options={["daily", "weekly", "monthly", "yearly"] as const} onChange={setPlGranularity} />
             </div>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Revenue</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Revenue</p>
                 <RevenueBarChart data={incomeSeries} />
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Expenses</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Expenses</p>
                 <ExpenseTrendChart data={expenseSeries} />
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Profit Trend</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Profit Trend</p>
                 <ProfitTrendChart data={profitSeries} />
               </div>
             </div>
@@ -762,8 +762,8 @@ export default function Reports() {
       {tab === "analytics" && (
         <div className="space-y-6">
           <Card className="p-5 sm:p-6">
-            <p className="mb-1 text-base font-semibold text-slate-900">Monthly Analytics</p>
-            <p className="mb-4 text-xs text-slate-400">This month, compared with last month</p>
+            <p className="mb-1 text-base font-semibold text-slate-900 dark:text-slate-100">Monthly Analytics</p>
+            <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">This month, compared with last month</p>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               <StatCard label="Revenue" value={formatCurrency(revenueMonth)} numeric={revenueMonth} format={formatCurrency} icon={<Wallet className="h-5 w-5" />} tone="green" trend={momRevenueChange} trendLabel="vs last month" />
               <StatCard label="Expenses" value={formatCurrency(expensesMonth)} numeric={expensesMonth} format={formatCurrency} icon={<Receipt className="h-5 w-5" />} tone="rose" trend={momExpenseChange} trendLabel="vs last month" />
@@ -806,8 +806,8 @@ export default function Reports() {
           </Card>
 
           <Card className="p-5 sm:p-6">
-            <p className="mb-1 text-base font-semibold text-slate-900">Yearly Analytics</p>
-            <p className="mb-4 text-xs text-slate-400">This year vs. last year</p>
+            <p className="mb-1 text-base font-semibold text-slate-900 dark:text-slate-100">Yearly Analytics</p>
+            <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">This year vs. last year</p>
             <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
               <StatCard label="Revenue" value={formatCurrency(revenueYear)} numeric={revenueYear} format={formatCurrency} icon={<Wallet className="h-5 w-5" />} tone="green" trend={revenueGrowthPct} trendLabel="vs last year" />
               <StatCard label="Expenses" value={formatCurrency(expensesYear)} numeric={expensesYear} format={formatCurrency} icon={<Receipt className="h-5 w-5" />} tone="rose" />
@@ -825,15 +825,15 @@ export default function Reports() {
             </div>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Revenue vs Expenses (5 Years)</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Revenue vs Expenses (5 Years)</p>
                 <IncomeVsExpenseChart data={yearlyCombinedSeries} height="h-56" showLegend={false} />
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Profit Trend (5 Years)</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Profit Trend (5 Years)</p>
                 <TrendLineChart data={yearlyProfitSeries} />
               </div>
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Revenue by Room (All Time)</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Revenue by Room (All Time)</p>
                 {roomRevenueShare.length === 0 ? <EmptyState title="No bookings yet" /> : <ExpenseCategoryDonut data={roomRevenueShare} />}
               </div>
             </div>
@@ -856,7 +856,7 @@ export default function Reports() {
                 <ExportMenu onCsv={exportLedgerCsv} onExcel={exportLedgerExcel} onPdf={exportLedgerPdf} />
               </div>
             </div>
-            <div className="border-t border-slate-100 pt-3">
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
               <AdvancedFiltersBar
                 rooms={roomOptions}
                 guests={guestOptions}
@@ -904,9 +904,9 @@ export default function Reports() {
                           <Badge tone={r.type === "income" ? "green" : "red"}>{r.type}</Badge>
                         </TD>
                         <TD>{r.description}</TD>
-                        <TD className={r.income ? "text-emerald-600 font-medium" : ""}>{r.income ? formatCurrency(r.income) : "—"}</TD>
-                        <TD className={r.expense ? "text-rose-600 font-medium" : ""}>{r.expense ? formatCurrency(r.expense) : "—"}</TD>
-                        <TD className={cn("font-semibold", r.runningBalance >= 0 ? "text-slate-800" : "text-rose-600")}>{formatCurrency(r.runningBalance)}</TD>
+                        <TD className={r.income ? "text-emerald-600 dark:text-emerald-400 font-medium" : ""}>{r.income ? formatCurrency(r.income) : "—"}</TD>
+                        <TD className={r.expense ? "text-rose-600 dark:text-rose-400 font-medium" : ""}>{r.expense ? formatCurrency(r.expense) : "—"}</TD>
+                        <TD className={cn("font-semibold", r.runningBalance >= 0 ? "text-slate-800 dark:text-slate-200" : "text-rose-600 dark:text-rose-400")}>{formatCurrency(r.runningBalance)}</TD>
                         <TD>{PAYMENT_METHOD_LABELS[r.paymentMethod] ?? r.paymentMethod}</TD>
                         <TD>{r.reference}</TD>
                         <TD>{r.guest || "—"}</TD>
@@ -926,8 +926,8 @@ export default function Reports() {
           <Card className="p-5 sm:p-6">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
               <div>
-                <p className="text-base font-semibold text-slate-900">Daily Closing Report</p>
-                <p className="text-xs text-slate-400">One-click end-of-day summary for a chosen date</p>
+                <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Daily Closing Report</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">One-click end-of-day summary for a chosen date</p>
               </div>
               <div className="flex flex-wrap items-end gap-3">
                 <div>
@@ -960,8 +960,8 @@ export default function Reports() {
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="border-b border-slate-100 p-4">
-              <p className="text-sm font-semibold text-slate-900">Transactions on {formatDate(closingDate)}</p>
+            <div className="border-b border-slate-100 dark:border-slate-800 p-4">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Transactions on {formatDate(closingDate)}</p>
             </div>
             {closingTransactions.length === 0 ? (
               <EmptyState title="No transactions on this date" />
@@ -986,7 +986,7 @@ export default function Reports() {
                         <TD>{t.booking?.booking_number ?? "—"}</TD>
                         <TD>{PAYMENT_METHOD_LABELS[t.payment_method] ?? t.payment_method}</TD>
                         <TD className="capitalize">{t.transaction_type}</TD>
-                        <TD className={t.transaction_type === "refund" ? "font-medium text-rose-600" : "font-medium text-slate-800"}>
+                        <TD className={t.transaction_type === "refund" ? "font-medium text-rose-600 dark:text-rose-400" : "font-medium text-slate-800 dark:text-slate-200"}>
                           {t.transaction_type === "refund" ? "-" : ""}
                           {formatCurrency(t.amount)}
                         </TD>
@@ -999,8 +999,8 @@ export default function Reports() {
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="border-b border-slate-100 p-4">
-              <p className="text-sm font-semibold text-slate-900">Expenses on {formatDate(closingDate)}</p>
+            <div className="border-b border-slate-100 dark:border-slate-800 p-4">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Expenses on {formatDate(closingDate)}</p>
             </div>
             {closingExpenses.length === 0 ? (
               <EmptyState title="No expenses on this date" />
@@ -1021,7 +1021,7 @@ export default function Reports() {
                         <TD>{e.title}</TD>
                         <TD>{e.category?.name ?? "—"}</TD>
                         <TD>{EXPENSE_PAYMENT_METHOD_LABELS[e.payment_method] ?? e.payment_method}</TD>
-                        <TD className="font-medium text-rose-600">{formatCurrency(Number(e.amount))}</TD>
+                        <TD className="font-medium text-rose-600 dark:text-rose-400">{formatCurrency(Number(e.amount))}</TD>
                       </TR>
                     ))}
                   </TBody>
@@ -1043,7 +1043,7 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
       onClick={onClick}
       className={cn(
         "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-        active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+        active ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
       )}
     >
       {icon}
