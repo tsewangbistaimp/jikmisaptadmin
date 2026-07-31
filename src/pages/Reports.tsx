@@ -16,18 +16,25 @@ import {
   BedDouble,
   Award,
   Percent,
+  CalendarCheck,
+  LogIn,
+  LogOut,
+  Landmark,
+  Banknote,
+  CreditCard,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
+import { Input, Label } from "@/components/ui/input";
 import { ExportMenu } from "@/components/ui/export-menu";
 import { StatCard, RevenueBarChart, ExpenseTrendChart, IncomeVsExpenseChart, ExpenseCategoryDonut } from "@/components/dashboard/DashboardWidgets";
 import { ProfitTrendChart, TrendLineChart, DateRangeFilterBar, AdvancedFiltersBar, GranularityToggle } from "@/components/reports/ReportWidgets";
 import { FinancialCalendar } from "@/components/reports/FinancialCalendar";
 import { DayDetailDialog } from "@/components/reports/DayDetailDialog";
-import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTime, formatDate, todayISO } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS, EXPENSE_PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { sumByDay, sumByWeek, sumByMonth, sumByYear, monthOverMonthChange } from "@/lib/dashboard-helpers";
 import {
@@ -83,7 +90,7 @@ interface ReportExpense {
 }
 
 type PLGranularity = "daily" | "weekly" | "monthly" | "yearly";
-type Tab = "overview" | "analytics" | "calendar" | "ledger";
+type Tab = "overview" | "analytics" | "calendar" | "ledger" | "closing";
 
 const PL_WINDOW: Record<PLGranularity, number> = { daily: 30, weekly: 12, monthly: 12, yearly: 5 };
 
@@ -108,6 +115,7 @@ export default function Reports() {
 
   const [calendarMonth, setCalendarMonth] = React.useState(() => new Date());
   const [selectedDay, setSelectedDay] = React.useState<string | null>(null);
+  const [closingDate, setClosingDate] = React.useState(() => todayISO());
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -526,6 +534,131 @@ export default function Reports() {
     });
   };
 
+  // ---- Daily Closing Report (Closing tab) — a one-click end-of-day summary
+  // for a single chosen date (defaults to today). Pending payments/occupancy
+  // reflect the live snapshot rather than a historical reconstruction, which
+  // is the right behaviour when closing out today but is a known simplification
+  // if an admin picks a past date to re-print a closing report.
+  const closingTransactions = transactions.filter((t) => t.created_at.slice(0, 10) === closingDate);
+  const closingExpenses = expenses.filter((e) => e.date.slice(0, 10) === closingDate);
+  const closingRevenue = closingTransactions.reduce((s, t) => s + netTransactionAmount(t), 0);
+  const closingExpenseTotal = closingExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const closingProfit = closingRevenue - closingExpenseTotal;
+  const closingCash = closingTransactions.filter((t) => t.payment_method === "cash").reduce((s, t) => s + netTransactionAmount(t), 0);
+  const closingBank = closingTransactions.filter((t) => t.payment_method === "bank_transfer").reduce((s, t) => s + netTransactionAmount(t), 0);
+  const closingOnline = closingTransactions
+    .filter((t) => t.payment_method === "esewa" || t.payment_method === "khalti")
+    .reduce((s, t) => s + netTransactionAmount(t), 0);
+  const closingCheckIns = bookings.filter((b) => b.check_in === closingDate && b.booking_status !== "cancelled");
+  const closingCheckOuts = bookings.filter((b) => b.check_out === closingDate && b.booking_status !== "cancelled");
+  const closingOccupiedRoomIds = new Set(
+    activeBookings.filter((b) => b.booking_status !== "checked_out" && b.check_in <= closingDate && b.check_out > closingDate).map((b) => b.room_id)
+  );
+  const closingOccupancyRate = rooms.length > 0 ? Math.round((rooms.filter((r) => closingOccupiedRoomIds.has(r.id)).length / rooms.length) * 100) : 0;
+
+  const exportClosingExcel = async () => {
+    const { downloadExcelWorkbook } = await import("@/lib/export-excel");
+    downloadExcelWorkbook(`daily-closing-${closingDate}.xlsx`, [
+      {
+        name: "Daily Closing",
+        columns: [{ header: "Metric", key: "metric" }, { header: "Value", key: "value" }],
+        rows: [
+          { metric: "Date", value: closingDate },
+          { metric: "Revenue", value: closingRevenue },
+          { metric: "Expenses", value: closingExpenseTotal },
+          { metric: "Net Profit", value: closingProfit },
+          { metric: "Cash", value: closingCash },
+          { metric: "Bank Transfer", value: closingBank },
+          { metric: "Online (eSewa/Khalti)", value: closingOnline },
+          { metric: "Pending Payments (amount)", value: pendingAmount },
+          { metric: "Check-ins", value: closingCheckIns.length },
+          { metric: "Check-outs", value: closingCheckOuts.length },
+          { metric: "Occupancy Rate (%)", value: closingOccupancyRate },
+        ],
+      },
+      {
+        name: "Transactions",
+        columns: [
+          { header: "Time", key: "time" },
+          { header: "Guest", key: "guest" },
+          { header: "Booking", key: "booking" },
+          { header: "Amount", key: "amount", numeric: true },
+          { header: "Method", key: "method" },
+          { header: "Type", key: "type" },
+        ],
+        rows: closingTransactions.map((t) => ({
+          time: formatDateTime(t.created_at),
+          guest: t.guest?.full_name ?? "",
+          booking: t.booking?.booking_number ?? "",
+          amount: netTransactionAmount(t),
+          method: PAYMENT_METHOD_LABELS[t.payment_method] ?? t.payment_method,
+          type: t.transaction_type,
+        })),
+      },
+      {
+        name: "Expenses",
+        columns: [
+          { header: "Title", key: "title" },
+          { header: "Category", key: "category" },
+          { header: "Amount", key: "amount", numeric: true },
+          { header: "Method", key: "method" },
+        ],
+        rows: closingExpenses.map((e) => ({
+          title: e.title,
+          category: e.category?.name ?? "",
+          amount: Number(e.amount),
+          method: e.payment_method,
+        })),
+      },
+    ]);
+  };
+
+  const exportClosingPdf = async () => {
+    const { downloadPdfReport } = await import("@/lib/export-pdf");
+    downloadPdfReport({
+      title: "Daily Closing Report",
+      subtitle: formatDate(closingDate),
+      summary: [
+        { label: "Revenue", value: formatCurrency(closingRevenue), tone: "positive" },
+        { label: "Expenses", value: formatCurrency(closingExpenseTotal), tone: "negative" },
+        { label: "Net Profit", value: formatCurrency(closingProfit), tone: closingProfit >= 0 ? "positive" : "negative" },
+        { label: "Occupancy", value: `${closingOccupancyRate}%` },
+      ],
+      sections: [
+        {
+          title: "Cash Flow Split",
+          columns: ["Cash", "Bank Transfer", "Online (eSewa/Khalti)", "Pending Payments", "Check-ins", "Check-outs"],
+          rows: [[
+            formatCurrency(closingCash),
+            formatCurrency(closingBank),
+            formatCurrency(closingOnline),
+            formatCurrency(pendingAmount),
+            String(closingCheckIns.length),
+            String(closingCheckOuts.length),
+          ]],
+        },
+        {
+          title: "Transactions",
+          columns: ["Time", "Guest", "Booking", "Amount", "Method", "Type"],
+          rows: closingTransactions.map((t) => [
+            formatDateTime(t.created_at),
+            t.guest?.full_name ?? "—",
+            t.booking?.booking_number ?? "—",
+            formatCurrency(netTransactionAmount(t)),
+            PAYMENT_METHOD_LABELS[t.payment_method] ?? t.payment_method,
+            t.transaction_type,
+          ]),
+        },
+        {
+          title: "Expenses",
+          columns: ["Title", "Category", "Amount", "Method"],
+          rows: closingExpenses.map((e) => [e.title, e.category?.name ?? "—", formatCurrency(Number(e.amount)), e.payment_method]),
+        },
+      ],
+      filename: `daily-closing-${closingDate}.pdf`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -539,6 +672,7 @@ export default function Reports() {
             <TabButton active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<LineChartIcon className="h-4 w-4" />} label="Analytics" />
             <TabButton active={tab === "calendar"} onClick={() => setTab("calendar")} icon={<CalendarDays className="h-4 w-4" />} label="Calendar" />
             <TabButton active={tab === "ledger"} onClick={() => setTab("ledger")} icon={<ListTree className="h-4 w-4" />} label="Ledger" />
+            <TabButton active={tab === "closing"} onClick={() => setTab("closing")} icon={<CalendarCheck className="h-4 w-4" />} label="Daily Closing" />
           </div>
           <ExportMenu label="Export Report" onExcel={exportFullExcel} onPdf={exportFullPdf} />
         </div>
@@ -770,6 +904,117 @@ export default function Reports() {
                         <TD>{r.reference}</TD>
                         <TD>{r.guest || "—"}</TD>
                         <TD>{r.booking || "—"}</TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {tab === "closing" && (
+        <div className="space-y-6">
+          <Card className="p-5 sm:p-6">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-slate-900">Daily Closing Report</p>
+                <p className="text-xs text-slate-400">One-click end-of-day summary for a chosen date</p>
+              </div>
+              <div className="flex items-end gap-3">
+                <div>
+                  <Label className="mb-1">Date</Label>
+                  <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="h-9" />
+                </div>
+                <ExportMenu label="Export Closing" onExcel={exportClosingExcel} onPdf={exportClosingPdf} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <StatCard label="Revenue" value={formatCurrency(closingRevenue)} numeric={closingRevenue} format={formatCurrency} icon={<Wallet className="h-5 w-5" />} tone="green" />
+              <StatCard label="Expenses" value={formatCurrency(closingExpenseTotal)} numeric={closingExpenseTotal} format={formatCurrency} icon={<Receipt className="h-5 w-5" />} tone="rose" />
+              <StatCard
+                label="Net Profit"
+                value={formatCurrency(closingProfit)}
+                numeric={closingProfit}
+                format={formatCurrency}
+                icon={<PiggyBank className="h-5 w-5" />}
+                tone={closingProfit >= 0 ? "brand" : "rose"}
+              />
+              <StatCard label="Occupancy" value={`${closingOccupancyRate}%`} icon={<DoorOpen className="h-5 w-5" />} tone="sky" />
+              <StatCard label="Cash" value={formatCurrency(closingCash)} numeric={closingCash} format={formatCurrency} icon={<Banknote className="h-5 w-5" />} tone="green" />
+              <StatCard label="Bank Transfer" value={formatCurrency(closingBank)} numeric={closingBank} format={formatCurrency} icon={<Landmark className="h-5 w-5" />} tone="brand" />
+              <StatCard label="Online" value={formatCurrency(closingOnline)} numeric={closingOnline} format={formatCurrency} icon={<CreditCard className="h-5 w-5" />} tone="amber" subtext="eSewa / Khalti" />
+              <StatCard label="Pending Payments" value={formatCurrency(pendingAmount)} numeric={pendingAmount} format={formatCurrency} icon={<AlertCircle className="h-5 w-5" />} tone="rose" subtext={`${pendingBookings.length} bookings`} />
+              <StatCard label="Check-ins" value={closingCheckIns.length} numeric={closingCheckIns.length} icon={<LogIn className="h-5 w-5" />} tone="green" />
+              <StatCard label="Check-outs" value={closingCheckOuts.length} numeric={closingCheckOuts.length} icon={<LogOut className="h-5 w-5" />} tone="rose" />
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <div className="border-b border-slate-100 p-4">
+              <p className="text-sm font-semibold text-slate-900">Transactions on {formatDate(closingDate)}</p>
+            </div>
+            {closingTransactions.length === 0 ? (
+              <EmptyState title="No transactions on this date" />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Time</TH>
+                      <TH>Guest</TH>
+                      <TH>Booking</TH>
+                      <TH>Method</TH>
+                      <TH>Type</TH>
+                      <TH>Amount</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {closingTransactions.map((t) => (
+                      <TR key={t.id}>
+                        <TD>{formatDateTime(t.created_at)}</TD>
+                        <TD>{t.guest?.full_name ?? "—"}</TD>
+                        <TD>{t.booking?.booking_number ?? "—"}</TD>
+                        <TD>{PAYMENT_METHOD_LABELS[t.payment_method] ?? t.payment_method}</TD>
+                        <TD className="capitalize">{t.transaction_type}</TD>
+                        <TD className={t.transaction_type === "refund" ? "font-medium text-rose-600" : "font-medium text-slate-800"}>
+                          {t.transaction_type === "refund" ? "-" : ""}
+                          {formatCurrency(t.amount)}
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            )}
+          </Card>
+
+          <Card className="overflow-hidden">
+            <div className="border-b border-slate-100 p-4">
+              <p className="text-sm font-semibold text-slate-900">Expenses on {formatDate(closingDate)}</p>
+            </div>
+            {closingExpenses.length === 0 ? (
+              <EmptyState title="No expenses on this date" />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Title</TH>
+                      <TH>Category</TH>
+                      <TH>Method</TH>
+                      <TH>Amount</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {closingExpenses.map((e) => (
+                      <TR key={e.id}>
+                        <TD>{e.title}</TD>
+                        <TD>{e.category?.name ?? "—"}</TD>
+                        <TD>{EXPENSE_PAYMENT_METHOD_LABELS[e.payment_method] ?? e.payment_method}</TD>
+                        <TD className="font-medium text-rose-600">{formatCurrency(Number(e.amount))}</TD>
                       </TR>
                     ))}
                   </TBody>

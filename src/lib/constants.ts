@@ -81,3 +81,38 @@ export const UTILITY_CATEGORY_NAMES = [
   "Staff Salary",
   "Other Expenses",
 ];
+
+/** Human-readable labels for audit_logs.action, written by the triggers in
+ *  20260801050000_audit_log_triggers.sql / 20260801060000_audit_log_login_trigger.sql
+ *  plus the pre-existing 'delete_booking' action from delete_booking_with_code(). */
+export const ACTIVITY_LOG_LABELS: Record<string, string> = {
+  delete_booking: "Deleted booking",
+  payment: "Payment recorded",
+  refund: "Refund issued",
+  booking_insert: "Booking created",
+  booking_update: "Booking updated",
+  expenses_insert: "Expense added",
+  expenses_update: "Expense updated",
+  expenses_deleted: "Expense deleted",
+  rooms_insert: "Room added",
+  rooms_update: "Room updated",
+  rooms_deleted: "Room deleted",
+  guests_insert: "Guest created",
+  guests_update: "Guest updated",
+  profiles_insert: "Staff account created",
+  profiles_update: "Staff account updated",
+  profiles_deleted: "Staff account deleted",
+  login: "Signed in",
+};
+
+/** Grouping used by the Activity Log filter dropdown in settings/Users.tsx. */
+export const ACTIVITY_LOG_FILTERS: { value: string; label: string; actions: string[] }[] = [
+  { value: "all", label: "All Activity", actions: [] },
+  { value: "payments", label: "Payments & Refunds", actions: ["payment", "refund"] },
+  { value: "bookings", label: "Bookings", actions: ["booking_insert", "booking_update", "delete_booking"] },
+  { value: "expenses", label: "Expenses", actions: ["expenses_insert", "expenses_update", "expenses_deleted"] },
+  { value: "rooms", label: "Rooms", actions: ["rooms_insert", "rooms_update", "rooms_deleted"] },
+  { value: "guests", label: "Guests", actions: ["guests_insert", "guests_update"] },
+  { value: "staff", label: "Staff Accounts", actions: ["profiles_insert", "profiles_update", "profiles_deleted"] },
+  { value: "logins", label: "Login History", actions: ["login"] },
+];

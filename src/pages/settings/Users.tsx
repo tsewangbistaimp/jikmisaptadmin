@@ -13,8 +13,9 @@ import { Input, Label, Select, FieldError } from "@/components/ui/input";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { initials, getFunctionErrorMessage, formatDateTime } from "@/lib/utils";
+import { initials, getFunctionErrorMessage, formatDateTime, formatCurrency } from "@/lib/utils";
 import { staffFormSchema, type StaffFormValues } from "@/lib/schemas";
+import { ACTIVITY_LOG_LABELS, ACTIVITY_LOG_FILTERS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import type { Profile, AuditLog } from "@/lib/database.types";
 
 export default function UsersSettings() {
@@ -190,13 +191,24 @@ function AuthorizationCard({ staff }: { staff: Profile[] }) {
   const [generating, setGenerating] = React.useState(false);
   const [logs, setLogs] = React.useState<AuditLog[]>([]);
   const [logsLoading, setLogsLoading] = React.useState(true);
+  const [logFilter, setLogFilter] = React.useState("all");
 
   const loadLogs = React.useCallback(async () => {
     setLogsLoading(true);
-    const { data } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(15);
+    // 200 is a generous cap for a small apartment's activity feed — bump
+    // this (or add server-side paging) if the property's daily transaction
+    // volume ever makes that limit feel short.
+    const { data } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200);
     setLogs((data as AuditLog[]) ?? []);
     setLogsLoading(false);
   }, []);
+
+  const filteredLogs = React.useMemo(() => {
+    if (logFilter === "all") return logs;
+    const group = ACTIVITY_LOG_FILTERS.find((g) => g.value === logFilter);
+    if (!group) return logs;
+    return logs.filter((l) => group.actions.includes(l.action));
+  }, [logs, logFilter]);
 
   React.useEffect(() => {
     loadLogs();
@@ -260,35 +272,94 @@ function AuthorizationCard({ staff }: { staff: Profile[] }) {
       )}
 
       <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
-          <ScrollText className="h-3.5 w-3.5" /> Recent Authorization Activity
-        </p>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
+            <ScrollText className="h-3.5 w-3.5" /> Activity Log
+          </p>
+          <Select value={logFilter} onChange={(e) => setLogFilter(e.target.value)} className="h-8 w-44 text-xs">
+            {ACTIVITY_LOG_FILTERS.map((g) => (
+              <option key={g.value} value={g.value}>
+                {g.label}
+              </option>
+            ))}
+          </Select>
+        </div>
         {logsLoading ? (
           <p className="text-sm text-slate-400 dark:text-slate-500">Loading…</p>
-        ) : logs.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500">No authorized actions yet.</p>
+        ) : filteredLogs.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">No activity recorded yet.</p>
         ) : (
-          <ul className="space-y-1.5">
-            {logs.map((l) => (
-              <li key={l.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
-                <div>
-                  <p className="text-slate-700 dark:text-slate-300">
-                    {l.action === "delete_booking" ? "Deleted booking" : l.action}
-                    {typeof l.details?.booking_number === "string" ? ` ${String(l.details?.booking_number)}` : ""}
-                    {" · by "}
-                    {(l.performed_by && nameById.get(l.performed_by)) ?? "Unknown"}
-                    {" · authorized by "}
-                    {(l.admin_id && nameById.get(l.admin_id)) ?? "Unknown"}
-                  </p>
-                </div>
-                <p className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{formatDateTime(l.created_at)}</p>
-              </li>
-            ))}
+          <ul className="max-h-96 space-y-1.5 overflow-y-auto scrollbar-thin pr-1">
+            {filteredLogs.map((l) => {
+              const detail = describeLogDetails(l);
+              return (
+                <li key={l.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
+                  <div className="min-w-0">
+                    <p className="truncate text-slate-700 dark:text-slate-300">
+                      {ACTIVITY_LOG_LABELS[l.action] ?? l.action}
+                      {detail ? ` · ${detail}` : ""}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {l.action === "delete_booking" ? (
+                        <>
+                          by {(l.performed_by && nameById.get(l.performed_by)) ?? "Unknown"} · authorized by{" "}
+                          {(l.admin_id && nameById.get(l.admin_id)) ?? "Unknown"}
+                        </>
+                      ) : l.action === "login" ? null : (
+                        <>by {(l.performed_by && nameById.get(l.performed_by)) ?? "System"}</>
+                      )}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{formatDateTime(l.created_at)}</p>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
     </Card>
   );
+}
+
+/** Renders a short, action-specific detail string from audit_logs.details
+ *  (a loosely-typed jsonb blob whose shape depends on which trigger wrote
+ *  it — see 20260801050000_audit_log_triggers.sql). */
+function describeLogDetails(l: AuditLog): string {
+  const d = l.details ?? {};
+  switch (l.action) {
+    case "delete_booking":
+    case "booking_insert":
+    case "booking_update":
+      return typeof d.booking_number === "string" ? `Booking ${d.booking_number}` : "";
+    case "payment":
+    case "refund": {
+      const amount = typeof d.amount === "number" ? formatCurrency(d.amount) : "";
+      const method = typeof d.payment_method === "string" ? PAYMENT_METHOD_LABELS[d.payment_method] ?? d.payment_method : "";
+      return [amount, method].filter(Boolean).join(" via ");
+    }
+    case "expenses_insert":
+    case "expenses_update":
+    case "expenses_deleted": {
+      const title = typeof d.title === "string" ? `"${d.title}"` : "";
+      const amount = typeof d.amount === "number" ? formatCurrency(d.amount) : "";
+      return [title, amount].filter(Boolean).join(" · ");
+    }
+    case "rooms_insert":
+    case "rooms_update":
+    case "rooms_deleted":
+      return typeof d.room_number === "string" ? `Room ${d.room_number}` : "";
+    case "guests_insert":
+    case "guests_update":
+      return typeof d.full_name === "string" ? d.full_name : "";
+    case "profiles_insert":
+    case "profiles_update":
+    case "profiles_deleted":
+      return typeof d.full_name === "string" ? d.full_name : "";
+    case "login":
+      return typeof d.email === "string" ? d.email : "";
+    default:
+      return "";
+  }
 }
 
 
