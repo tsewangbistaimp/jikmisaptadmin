@@ -167,3 +167,15 @@ body {
 .dark .scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: #475569;
 }
+
+/* Used for horizontally-scrollable mobile controls (e.g. Reports' tab bar)
+   where a visible scrollbar would look out of place next to a pill toggle —
+   the row is still fully scrollable by touch/trackpad, just without the
+   scrollbar chrome. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

@@ -302,7 +302,7 @@ export default function Bookings() {
                     </div>
                   </div>
 
-                  <div className="mt-3 flex justify-end gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <div className="mt-3 flex flex-wrap justify-end gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
                     <IconButton title="View" onClick={() => setViewing(b)}>
                       <Eye className="h-4 w-4" />
                     </IconButton>

@@ -247,7 +247,7 @@ function AuthorizationCard({ staff }: { staff: Profile[] }) {
 
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-slate-100">
             <ShieldCheck className="h-4.5 w-4.5 text-brand-500" /> Temporary Authorization

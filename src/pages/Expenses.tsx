@@ -457,9 +457,9 @@ export default function Expenses() {
           <div className="space-y-3">
             {insights.budgetVsActual.map((b) => (
               <div key={b.category.id}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-700 dark:text-slate-300">{b.category.name}</span>
-                  <span className={cn("font-semibold", b.overspent ? "text-rose-600" : "text-slate-600 dark:text-slate-400")}>
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-sm">
+                  <span className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-300">{b.category.name}</span>
+                  <span className={cn("flex shrink-0 items-center whitespace-nowrap font-semibold", b.overspent ? "text-rose-600" : "text-slate-600 dark:text-slate-400")}>
                     {formatCurrency(b.actual)} / {formatCurrency(b.budget)}
                     {b.overspent && (
                       <Badge tone="red" className="ml-2">

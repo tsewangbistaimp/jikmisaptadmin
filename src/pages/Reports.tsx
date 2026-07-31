@@ -666,15 +666,22 @@ export default function Reports() {
           <h1 className="text-2xl font-semibold text-slate-900">Reports</h1>
           <p className="text-sm text-slate-500">Revenue, expenses, and profit across your whole operation</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
-            <TabButton active={tab === "overview"} onClick={() => setTab("overview")} icon={<LayoutGrid className="h-4 w-4" />} label="Overview" />
-            <TabButton active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<LineChartIcon className="h-4 w-4" />} label="Analytics" />
-            <TabButton active={tab === "calendar"} onClick={() => setTab("calendar")} icon={<CalendarDays className="h-4 w-4" />} label="Calendar" />
-            <TabButton active={tab === "ledger"} onClick={() => setTab("ledger")} icon={<ListTree className="h-4 w-4" />} label="Ledger" />
-            <TabButton active={tab === "closing"} onClick={() => setTab("closing")} icon={<CalendarCheck className="h-4 w-4" />} label="Daily Closing" />
-          </div>
+        <div className="shrink-0 self-start sm:self-auto">
           <ExportMenu label="Export Report" onExcel={exportFullExcel} onPdf={exportFullPdf} />
+        </div>
+      </div>
+
+      {/* Horizontally scrollable on mobile — 5 pill tabs don't fit a phone
+          width, so this row scrolls by touch instead of wrapping/clipping.
+          The -mx-4 px-4 bleed matches AppLayout's mobile page padding so the
+          strip reaches the screen edges for a natural swipe area. */}
+      <div className="-mx-4 overflow-x-auto scrollbar-none px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+        <div className="flex w-max gap-1 rounded-xl bg-slate-100 p-1">
+          <TabButton active={tab === "overview"} onClick={() => setTab("overview")} icon={<LayoutGrid className="h-4 w-4" />} label="Overview" />
+          <TabButton active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<LineChartIcon className="h-4 w-4" />} label="Analytics" />
+          <TabButton active={tab === "calendar"} onClick={() => setTab("calendar")} icon={<CalendarDays className="h-4 w-4" />} label="Calendar" />
+          <TabButton active={tab === "ledger"} onClick={() => setTab("ledger")} icon={<ListTree className="h-4 w-4" />} label="Ledger" />
+          <TabButton active={tab === "closing"} onClick={() => setTab("closing")} icon={<CalendarCheck className="h-4 w-4" />} label="Daily Closing" />
         </div>
       </div>
 
@@ -917,15 +924,15 @@ export default function Reports() {
       {tab === "closing" && (
         <div className="space-y-6">
           <Card className="p-5 sm:p-6">
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
               <div>
                 <p className="text-base font-semibold text-slate-900">Daily Closing Report</p>
                 <p className="text-xs text-slate-400">One-click end-of-day summary for a chosen date</p>
               </div>
-              <div className="flex items-end gap-3">
+              <div className="flex flex-wrap items-end gap-3">
                 <div>
                   <Label className="mb-1">Date</Label>
-                  <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="h-9" />
+                  <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="h-9 w-full" />
                 </div>
                 <ExportMenu label="Export Closing" onExcel={exportClosingExcel} onPdf={exportClosingPdf} />
               </div>
@@ -1035,7 +1042,7 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+        "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
         active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
       )}
     >

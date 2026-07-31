@@ -314,7 +314,7 @@ function GuestProfileDialog({
   return (
     <Dialog open={!!guest} onClose={onClose} title={guest.full_name} description={guest.phone ?? undefined} className="max-w-lg">
       <div className="space-y-5">
-        <div className="flex justify-end gap-2 -mt-2">
+        <div className="-mt-2 flex flex-wrap justify-end gap-2">
           <ExportMenu label="Statement" onCsv={exportStatementCsv} onExcel={exportStatementExcel} onPdf={exportStatementPdf} />
           <Button size="sm" variant="outline" onClick={() => onEdit(guest)}>
             <Pencil className="h-3.5 w-3.5" /> Edit Guest
@@ -368,16 +368,16 @@ function GuestProfileDialog({
           ) : (
             <ul className="max-h-64 space-y-2 overflow-y-auto scrollbar-thin">
               {bookings.map((b) => (
-                <li key={b.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
-                  <div>
-                    <p className="font-medium text-slate-800 dark:text-slate-200">
+                <li key={b.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-800 dark:text-slate-200">
                       {b.booking_number} · Room {b.room?.room_number}
                     </p>
                     <p className="text-xs text-slate-400 dark:text-slate-500">
                       {formatDate(b.check_in)} → {formatDate(b.check_out)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <Badge tone={bookingStatusTone(b.booking_status)} className="capitalize">
                       {b.booking_status.replace("_", " ")}
                     </Badge>

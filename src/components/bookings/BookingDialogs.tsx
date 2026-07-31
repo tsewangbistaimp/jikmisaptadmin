@@ -190,9 +190,9 @@ export function BookingDetailDialog({
         )}
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Payment History</p>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {onRecordRefund && booking.advance_paid > 0 && (
                 <button
                   onClick={() => onRecordRefund(booking)}
@@ -218,17 +218,17 @@ export function BookingDetailDialog({
               {transactions.map((t) => {
                 const isRefund = t.transaction_type === "refund";
                 return (
-                  <li key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
-                    <div>
-                      <p className="font-medium text-slate-800 dark:text-slate-200 capitalize">
+                  <li key={t.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-800 dark:text-slate-200 capitalize">
                         {t.transaction_type} · {PAYMENT_METHOD_LABELS[t.payment_method]}
                       </p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                      <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                         {formatDateTime(t.created_at)}
                         {t.staff?.full_name ? ` · recorded by ${t.staff.full_name}` : ""}
                       </p>
                     </div>
-                    <p className={`font-semibold ${isRefund ? "text-rose-600" : "text-slate-900 dark:text-slate-100"}`}>
+                    <p className={`shrink-0 font-semibold ${isRefund ? "text-rose-600" : "text-slate-900 dark:text-slate-100"}`}>
                       {isRefund ? "-" : ""}
                       {formatCurrency(t.amount)}
                     </p>
