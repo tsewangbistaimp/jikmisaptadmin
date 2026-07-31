@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown, Wallet } from "lucide-react";
+import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown, Wallet, Undo2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   DeleteBookingDialog,
   InvoiceDialog,
   RecordPaymentDialog,
+  RefundDialog,
 } from "@/components/bookings/BookingDialogs";
 
 const PAGE_SIZE = 10;
@@ -42,6 +43,7 @@ export default function Bookings() {
   const [deleting, setDeleting] = React.useState<BookingWithRelations | null>(null);
   const [invoicing, setInvoicing] = React.useState<BookingWithRelations | null>(null);
   const [paying, setPaying] = React.useState<BookingWithRelations | null>(null);
+  const [refunding, setRefunding] = React.useState<BookingWithRelations | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -241,6 +243,11 @@ export default function Bookings() {
                               <Wallet className="h-4 w-4" />
                             </IconButton>
                           )}
+                          {b.advance_paid > 0 && (
+                            <IconButton title="Refund" onClick={() => setRefunding(b)}>
+                              <Undo2 className="h-4 w-4" />
+                            </IconButton>
+                          )}
                           <IconButton title="Delete" onClick={() => setDeleting(b)} destructive>
                             <Trash2 className="h-4 w-4" />
                           </IconButton>
@@ -315,6 +322,11 @@ export default function Bookings() {
                         <Wallet className="h-4 w-4" />
                       </IconButton>
                     )}
+                    {b.advance_paid > 0 && (
+                      <IconButton title="Refund" onClick={() => setRefunding(b)}>
+                        <Undo2 className="h-4 w-4" />
+                      </IconButton>
+                    )}
                     <IconButton title="Delete" onClick={() => setDeleting(b)} destructive>
                       <Trash2 className="h-4 w-4" />
                     </IconButton>
@@ -347,12 +359,17 @@ export default function Bookings() {
           setViewing(null);
           setPaying(b);
         }}
+        onRecordRefund={(b) => {
+          setViewing(null);
+          setRefunding(b);
+        }}
       />
       <EditBookingDialog booking={editing} onClose={() => setEditing(null)} onSaved={load} />
       <CheckoutDialog booking={checkingOut} onClose={() => setCheckingOut(null)} onDone={load} />
       <DeleteBookingDialog booking={deleting} onClose={() => setDeleting(null)} onDeleted={load} />
       <InvoiceDialog booking={invoicing} onClose={() => setInvoicing(null)} />
       <RecordPaymentDialog booking={paying} onClose={() => setPaying(null)} onDone={load} />
+      <RefundDialog booking={refunding} onClose={() => setRefunding(null)} onDone={load} />
     </div>
   );
 }

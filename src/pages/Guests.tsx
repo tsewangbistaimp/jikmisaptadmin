@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Search, User, Pencil, IdCard, ImagePlus, Loader2 } from "lucide-react";
+import { Search, User, Pencil, IdCard, ImagePlus, Loader2, Receipt, Undo2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea, FieldError } from "@/components/ui/input";
@@ -11,11 +11,14 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { ExportMenu } from "@/components/ui/export-menu";
+import { InvoiceDialog } from "@/components/bookings/BookingDialogs";
 import { supabase } from "@/lib/supabase";
-import { formatCurrency, formatDate, initials } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/utils";
 import { bookingStatusTone } from "@/lib/badge-tones";
+import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { guestFormSchema, type GuestFormValues } from "@/lib/schemas";
-import type { Booking, Guest, Room } from "@/lib/database.types";
+import type { Booking, BookingWithRelations, Guest, Room, Transaction } from "@/lib/database.types";
 
 export default function Guests() {
   const [searchParams] = useSearchParams();
@@ -24,6 +27,7 @@ export default function Guests() {
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<Guest | null>(null);
   const [editing, setEditing] = React.useState<Guest | null>(null);
+  const [invoicing, setInvoicing] = React.useState<BookingWithRelations | null>(null);
 
   const load = React.useCallback(async () => {
     const { data } = await supabase.from("guests").select("*").order("full_name");
@@ -142,7 +146,12 @@ export default function Guests() {
         )}
       </Card>
 
-      <GuestProfileDialog guest={selected} onClose={() => setSelected(null)} onEdit={(g) => setEditing(g)} />
+      <GuestProfileDialog
+        guest={selected}
+        onClose={() => setSelected(null)}
+        onEdit={(g) => setEditing(g)}
+        onInvoice={(b) => setInvoicing(b)}
+      />
 
       <GuestEditDialog
         guest={editing}
@@ -150,6 +159,8 @@ export default function Guests() {
         onClose={() => setEditing(null)}
         onSaved={load}
       />
+
+      <InvoiceDialog booking={invoicing} onClose={() => setInvoicing(null)} />
     </div>
   );
 }
@@ -158,12 +169,15 @@ function GuestProfileDialog({
   guest,
   onClose,
   onEdit,
+  onInvoice,
 }: {
   guest: Guest | null;
   onClose: () => void;
   onEdit: (guest: Guest) => void;
+  onInvoice: (booking: BookingWithRelations) => void;
 }) {
   const [bookings, setBookings] = React.useState<(Booking & { room: Room })[]>([]);
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [idPhotoUrl, setIdPhotoUrl] = React.useState<string | null>(null);
 
@@ -179,6 +193,12 @@ function GuestProfileDialog({
         setBookings((data as (Booking & { room: Room })[]) ?? []);
         setLoading(false);
       });
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("guest_id", guest.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setTransactions((data as Transaction[]) ?? []));
   }, [guest]);
 
   // Show the guest ID photo the receptionist captured during booking, the
@@ -197,15 +217,105 @@ function GuestProfileDialog({
 
   if (!guest) return null;
 
+  const payments = transactions.filter((t) => t.transaction_type !== "refund");
+  const refunds = transactions.filter((t) => t.transaction_type === "refund");
+  const totalPayments = payments.reduce((s, t) => s + Number(t.amount), 0);
+  const totalRefunded = refunds.reduce((s, t) => s + Number(t.amount), 0);
+  const totalSpending = totalPayments - totalRefunded;
+
   const totalVisits = bookings.length;
-  const totalPaid = bookings.reduce((s, b) => s + Number(b.advance_paid), 0);
   const outstanding = bookings.reduce((s, b) => s + Number(b.remaining_balance), 0);
   const current = bookings.find((b) => b.booking_status === "checked_in");
+
+  const exportStatementCsv = () => {
+    const header = ["Date", "Type", "Booking", "Method", "Amount"];
+    const rows = transactions.map((t) => [
+      formatDateTime(t.created_at),
+      t.transaction_type,
+      bookings.find((b) => b.id === t.booking_id)?.booking_number ?? "",
+      PAYMENT_METHOD_LABELS[t.payment_method],
+      t.transaction_type === "refund" ? -t.amount : t.amount,
+    ]);
+    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `guest-statement-${guest.full_name.replace(/\s+/g, "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportStatementExcel = async () => {
+    const { downloadExcelWorkbook } = await import("@/lib/export-excel");
+    downloadExcelWorkbook(`guest-statement-${guest.full_name.replace(/\s+/g, "-")}.xlsx`, [
+      {
+        name: "Statement",
+        columns: [
+          { header: "Date", key: "date" },
+          { header: "Type", key: "type" },
+          { header: "Booking", key: "booking" },
+          { header: "Method", key: "method" },
+          { header: "Amount", key: "amount", numeric: true },
+        ],
+        rows: transactions.map((t) => ({
+          date: formatDateTime(t.created_at),
+          type: t.transaction_type,
+          booking: bookings.find((b) => b.id === t.booking_id)?.booking_number ?? "",
+          method: PAYMENT_METHOD_LABELS[t.payment_method],
+          amount: t.transaction_type === "refund" ? -t.amount : t.amount,
+        })),
+      },
+    ]);
+  };
+
+  const exportStatementPdf = async () => {
+    const { downloadPdfReport } = await import("@/lib/export-pdf");
+    downloadPdfReport({
+      title: "Guest Statement",
+      subtitle: `${guest.full_name} · ${guest.phone ?? "—"}`,
+      summary: [
+        { label: "Total Spending", value: formatCurrency(totalSpending), tone: "positive" },
+        { label: "Outstanding Balance", value: formatCurrency(outstanding), tone: outstanding > 0 ? "negative" : "default" },
+        { label: "Total Refunded", value: formatCurrency(totalRefunded) },
+        { label: "Total Visits", value: String(totalVisits) },
+      ],
+      sections: [
+        {
+          title: "Transaction History",
+          columns: ["Date", "Type", "Booking", "Method", "Amount"],
+          rows: transactions.map((t) => [
+            formatDateTime(t.created_at),
+            t.transaction_type,
+            bookings.find((b) => b.id === t.booking_id)?.booking_number ?? "",
+            PAYMENT_METHOD_LABELS[t.payment_method],
+            formatCurrency(t.transaction_type === "refund" ? -t.amount : t.amount),
+          ]),
+        },
+        {
+          title: "Booking History",
+          columns: ["Booking", "Room", "Check-in", "Check-out", "Total", "Paid", "Balance", "Status"],
+          rows: bookings.map((b) => [
+            b.booking_number,
+            b.room?.room_number ?? "",
+            formatDate(b.check_in),
+            formatDate(b.check_out),
+            formatCurrency(b.total_amount),
+            formatCurrency(b.advance_paid),
+            formatCurrency(b.remaining_balance),
+            b.booking_status,
+          ]),
+        },
+      ],
+      filename: `guest-statement-${guest.full_name.replace(/\s+/g, "-")}.pdf`,
+    });
+  };
 
   return (
     <Dialog open={!!guest} onClose={onClose} title={guest.full_name} description={guest.phone ?? undefined} className="max-w-lg">
       <div className="space-y-5">
-        <div className="flex justify-end -mt-2">
+        <div className="flex justify-end gap-2 -mt-2">
+          <ExportMenu label="Statement" onCsv={exportStatementCsv} onExcel={exportStatementExcel} onPdf={exportStatementPdf} />
           <Button size="sm" variant="outline" onClick={() => onEdit(guest)}>
             <Pencil className="h-3.5 w-3.5" /> Edit Guest
           </Button>
@@ -213,9 +323,10 @@ function GuestProfileDialog({
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           <StatBox label="Total Visits" value={String(totalVisits)} />
-          <StatBox label="Total Paid" value={formatCurrency(totalPaid)} />
+          <StatBox label="Total Spending" value={formatCurrency(totalSpending)} />
           <StatBox label="Outstanding Balance" value={formatCurrency(outstanding)} />
           <StatBox label="Current Booking" value={current ? current.booking_number : "None"} />
+          {totalRefunded > 0 && <StatBox label="Total Refunded" value={formatCurrency(totalRefunded)} />}
         </div>
 
         <div>
@@ -249,7 +360,7 @@ function GuestProfileDialog({
         )}
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Booking History</p>
+          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Booking History &amp; Invoices</p>
           {loading ? (
             <PageLoader />
           ) : bookings.length === 0 ? (
@@ -266,14 +377,63 @@ function GuestProfileDialog({
                       {formatDate(b.check_in)} → {formatDate(b.check_out)}
                     </p>
                   </div>
-                  <Badge tone={bookingStatusTone(b.booking_status)} className="capitalize">
-                    {b.booking_status.replace("_", " ")}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge tone={bookingStatusTone(b.booking_status)} className="capitalize">
+                      {b.booking_status.replace("_", " ")}
+                    </Badge>
+                    <button
+                      title="View Invoice"
+                      onClick={() => onInvoice({ ...b, guest } as BookingWithRelations)}
+                      className="text-slate-400 hover:text-brand-600"
+                    >
+                      <Receipt className="h-4 w-4" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Payment History</p>
+          {payments.length === 0 ? (
+            <p className="text-sm text-slate-400 dark:text-slate-500">No payments recorded yet.</p>
+          ) : (
+            <ul className="max-h-48 space-y-1.5 overflow-y-auto scrollbar-thin">
+              {payments.map((t) => (
+                <li key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
+                  <div>
+                    <p className="font-medium capitalize text-slate-800 dark:text-slate-200">
+                      {t.transaction_type} · {PAYMENT_METHOD_LABELS[t.payment_method]}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formatDateTime(t.created_at)}</p>
+                  </div>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(t.amount)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {refunds.length > 0 && (
+          <div>
+            <p className="mb-2 flex items-center gap-1 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
+              <Undo2 className="h-3.5 w-3.5" /> Refund History
+            </p>
+            <ul className="max-h-40 space-y-1.5 overflow-y-auto scrollbar-thin">
+              {refunds.map((t) => (
+                <li key={t.id} className="flex items-center justify-between rounded-lg bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-sm">
+                  <div>
+                    <p className="font-medium text-rose-700">{PAYMENT_METHOD_LABELS[t.payment_method]}</p>
+                    <p className="text-xs text-rose-400">{formatDateTime(t.created_at)}</p>
+                  </div>
+                  <p className="font-semibold text-rose-600">-{formatCurrency(t.amount)}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Dialog>
   );

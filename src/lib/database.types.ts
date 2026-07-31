@@ -57,6 +57,10 @@ export interface Booking {
   total_amount: number;
   advance_paid: number;
   remaining_balance: number;
+  /** Informational line-item, not netted into total_amount automatically. */
+  discount: number;
+  /** Informational line-item, not netted into total_amount automatically. */
+  tax: number;
   booking_source: BookingSource;
   payment_method: PaymentMethod | null;
   payment_status: PaymentStatus;

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
+import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,12 @@ export function BookingDetailDialog({
   booking,
   onClose,
   onRecordPayment,
+  onRecordRefund,
 }: {
   booking: BookingWithRelations | null;
   onClose: () => void;
   onRecordPayment?: (booking: BookingWithRelations) => void;
+  onRecordRefund?: (booking: BookingWithRelations) => void;
 }) {
   const [transactions, setTransactions] = React.useState<TransactionWithStaff[]>([]);
   const [addOns, setAddOns] = React.useState<BookingService[]>([]);
@@ -126,6 +128,8 @@ export function BookingDetailDialog({
           <Info label="Paid" value={formatCurrency(booking.advance_paid)} />
           <Info label="Balance" value={formatCurrency(booking.remaining_balance)} />
           <Info label="Method" value={booking.payment_method ? PAYMENT_METHOD_LABELS[booking.payment_method] : "—"} />
+          {booking.discount > 0 && <Info label="Discount" value={formatCurrency(booking.discount)} />}
+          {booking.tax > 0 && <Info label="Tax" value={formatCurrency(booking.tax)} />}
         </div>
 
         <div>
@@ -188,31 +192,49 @@ export function BookingDetailDialog({
         <div>
           <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-medium uppercase text-slate-400 dark:text-slate-500">Payment History</p>
-            {onRecordPayment && booking.remaining_balance > 0 && booking.booking_status !== "cancelled" && (
-              <button
-                onClick={() => onRecordPayment(booking)}
-                className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700"
-              >
-                <Wallet className="h-3.5 w-3.5" /> Record Payment
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {onRecordRefund && booking.advance_paid > 0 && (
+                <button
+                  onClick={() => onRecordRefund(booking)}
+                  className="flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700"
+                >
+                  <Undo2 className="h-3.5 w-3.5" /> Refund
+                </button>
+              )}
+              {onRecordPayment && booking.remaining_balance > 0 && booking.booking_status !== "cancelled" && (
+                <button
+                  onClick={() => onRecordPayment(booking)}
+                  className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700"
+                >
+                  <Wallet className="h-3.5 w-3.5" /> Record Payment
+                </button>
+              )}
+            </div>
           </div>
           {transactions.length === 0 ? (
             <p className="text-sm text-slate-400 dark:text-slate-500">No payments recorded yet.</p>
           ) : (
             <ul className="space-y-2">
-              {transactions.map((t) => (
-                <li key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
-                  <div>
-                    <p className="font-medium text-slate-800 dark:text-slate-200 capitalize">{t.transaction_type} · {PAYMENT_METHOD_LABELS[t.payment_method]}</p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      {formatDateTime(t.created_at)}
-                      {t.staff?.full_name ? ` · recorded by ${t.staff.full_name}` : ""}
+              {transactions.map((t) => {
+                const isRefund = t.transaction_type === "refund";
+                return (
+                  <li key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm">
+                    <div>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 capitalize">
+                        {t.transaction_type} · {PAYMENT_METHOD_LABELS[t.payment_method]}
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        {formatDateTime(t.created_at)}
+                        {t.staff?.full_name ? ` · recorded by ${t.staff.full_name}` : ""}
+                      </p>
+                    </div>
+                    <p className={`font-semibold ${isRefund ? "text-rose-600" : "text-slate-900 dark:text-slate-100"}`}>
+                      {isRefund ? "-" : ""}
+                      {formatCurrency(t.amount)}
                     </p>
-                  </div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(t.amount)}</p>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -245,6 +267,8 @@ export function EditBookingDialog({
   const [checkIn, setCheckIn] = React.useState("");
   const [checkOut, setCheckOut] = React.useState("");
   const [totalAmount, setTotalAmount] = React.useState(0);
+  const [discount, setDiscount] = React.useState(0);
+  const [tax, setTax] = React.useState(0);
   const [notes, setNotes] = React.useState("");
   const [bookingSource, setBookingSource] = React.useState("walk_in");
   const [saving, setSaving] = React.useState(false);
@@ -265,6 +289,8 @@ export function EditBookingDialog({
     setCheckIn(booking.check_in);
     setCheckOut(booking.check_out);
     setTotalAmount(booking.total_amount);
+    setDiscount(booking.discount ?? 0);
+    setTax(booking.tax ?? 0);
     setNotes(booking.notes ?? "");
     setBookingSource(booking.booking_source);
     setAddingItem(false);
@@ -389,6 +415,8 @@ export function EditBookingDialog({
         check_in: checkIn,
         check_out: checkOut,
         total_amount: totalAmount,
+        discount: discount || 0,
+        tax: tax || 0,
         notes: notes || null,
         booking_source: bookingSource,
       })
@@ -422,6 +450,18 @@ export function EditBookingDialog({
           <Input type="number" min={0} value={totalAmount} onChange={(e) => setTotalAmount(Number(e.target.value))} />
           <p className="mt-1.5 text-xs text-slate-400">Updates automatically when you add or remove an item below.</p>
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Discount</Label>
+            <Input type="number" min={0} step="0.01" value={discount} onChange={(e) => setDiscount(Number(e.target.value))} />
+          </div>
+          <div>
+            <Label>Tax</Label>
+            <Input type="number" min={0} step="0.01" value={tax} onChange={(e) => setTax(Number(e.target.value))} />
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-slate-400">Shown on the invoice as line items. Adjust Total Amount above to match if needed.</p>
 
         <div>
           <div className="mb-2 flex items-center justify-between">
@@ -769,6 +809,109 @@ export function RecordPaymentDialog({
 }
 
 // ---------------------------------------------------------------------------
+// Record a refund against a booking — the mirror of RecordPaymentDialog.
+// All validation (can't refund more than was actually paid) happens inside
+// the record_refund() Postgres function; this dialog just collects input.
+// ---------------------------------------------------------------------------
+export function RefundDialog({
+  booking,
+  onClose,
+  onDone,
+}: {
+  booking: BookingWithRelations | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = React.useState(0);
+  const [method, setMethod] = React.useState<PaymentMethod>("cash");
+  const [notes, setNotes] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (booking) {
+      setAmount(booking.advance_paid);
+      setNotes("");
+      setError(null);
+    }
+  }, [booking]);
+
+  if (!booking) return null;
+
+  const submit = async () => {
+    setError(null);
+    if (!amount || amount <= 0) {
+      setError("Enter an amount greater than zero");
+      return;
+    }
+    if (amount > booking.advance_paid) {
+      setError(`Amount can't exceed the amount paid (${formatCurrency(booking.advance_paid)})`);
+      return;
+    }
+    setSaving(true);
+    const { error: rpcError } = await supabase.rpc("record_refund", {
+      p_booking_id: booking.id,
+      p_amount: amount,
+      p_payment_method: method,
+      p_notes: notes || null,
+    });
+    setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    toast.success(`Refund of ${formatCurrency(amount)} recorded`);
+    onDone();
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!booking} onClose={onClose} title="Record Refund" description={booking.booking_number} className="max-w-sm">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          {booking.guest?.full_name} · Room {booking.room?.room_number}
+        </p>
+        <div>
+          <Label>Refund Amount</Label>
+          <Input
+            type="number"
+            min={0}
+            max={booking.advance_paid}
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+          />
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Amount paid so far: {formatCurrency(booking.advance_paid)}</p>
+        </div>
+        <div>
+          <Label>Refund Method</Label>
+          <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+            {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label>Reason (optional)</Label>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Early checkout, guest complaint" />
+        </div>
+        <FieldError message={error ?? undefined} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={submit} loading={saving}>
+            <Undo2 className="h-4 w-4" /> Record Refund
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Delete confirmation
 // ---------------------------------------------------------------------------
 export function DeleteBookingDialog({
@@ -886,6 +1029,7 @@ export function DeleteBookingDialog({
 // ---------------------------------------------------------------------------
 export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelations | null; onClose: () => void }) {
   const [addOns, setAddOns] = React.useState<BookingService[]>([]);
+  const [refundTotal, setRefundTotal] = React.useState(0);
 
   React.useEffect(() => {
     if (!booking) return;
@@ -894,6 +1038,12 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
       .select("*")
       .eq("booking_id", booking.id)
       .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
+    supabase
+      .from("transactions")
+      .select("amount")
+      .eq("booking_id", booking.id)
+      .eq("transaction_type", "refund")
+      .then(({ data }) => setRefundTotal((data ?? []).reduce((s, t) => s + Number(t.amount), 0)));
   }, [booking]);
 
   if (!booking) return null;
@@ -901,6 +1051,11 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
   const addOnsTotal = addOns.reduce((sum, a) => sum + a.unit_price * a.quantity, 0);
   const roomCharge = Math.max(booking.total_amount - addOnsTotal, 0);
   const ratePerNight = booking.nights > 0 ? roomCharge / booking.nights : roomCharge;
+  // "Net revenue" — total charged minus discount minus anything refunded back
+  // to the guest. There's no per-booking cost basis tracked in this system
+  // (no room-cost or allocated-expense data), so this is an honest revenue
+  // figure rather than a fabricated profit/margin number.
+  const netRevenue = booking.total_amount - booking.discount - refundTotal;
 
   return (
     <Dialog open={!!booking} onClose={onClose} title="Invoice" className="max-w-lg">
@@ -973,6 +1128,18 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
 
         {/* Totals */}
         <div className="space-y-1.5 rounded-xl bg-slate-50 px-4 py-3">
+          {booking.discount > 0 && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Discount</span>
+              <span className="font-medium text-slate-800">-{formatCurrency(booking.discount)}</span>
+            </div>
+          )}
+          {booking.tax > 0 && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Tax</span>
+              <span className="font-medium text-slate-800">+{formatCurrency(booking.tax)}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-slate-500">Total Amount</span>
             <span className="font-medium text-slate-800">{formatCurrency(booking.total_amount)}</span>
@@ -981,9 +1148,19 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
             <span className="text-slate-500">Amount Paid</span>
             <span className="font-medium text-slate-800">{formatCurrency(booking.advance_paid)}</span>
           </div>
+          {refundTotal > 0 && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Refunded</span>
+              <span className="font-medium text-rose-600">-{formatCurrency(refundTotal)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t border-slate-200 pt-1.5 text-base font-semibold text-slate-900">
             <span>Balance Due</span>
             <span className="text-brand-600">{formatCurrency(booking.remaining_balance)}</span>
+          </div>
+          <div className="flex justify-between pt-1 text-xs text-slate-400">
+            <span>Net Revenue (after discount &amp; refunds)</span>
+            <span>{formatCurrency(netRevenue)}</span>
           </div>
         </div>
 
