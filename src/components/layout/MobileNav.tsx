@@ -17,10 +17,12 @@ import {
   BarChart3,
   Moon,
   Sun,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { usePendingOnlineBookingsCount } from "@/hooks/useOnlineBookings";
 import { backdropFade, sheetVariants, SPRING_SNAPPY } from "@/lib/motion";
 
 const tabs = [
@@ -33,6 +35,7 @@ const tabs = [
 export function MobileNav() {
   const { isAdmin, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const pendingOnlineBookings = usePendingOnlineBookingsCount();
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = React.useState(false);
@@ -90,8 +93,13 @@ export function MobileNav() {
           </NavLink>
         ))}
         <button onClick={() => setMoreOpen(true)} aria-label="More" className="relative flex h-12 flex-1 items-center justify-center rounded-full">
-          <motion.span whileTap={{ scale: 0.82 }} transition={{ duration: 0.12 }} className="flex h-full w-full items-center justify-center">
+          <motion.span whileTap={{ scale: 0.82 }} transition={{ duration: 0.12 }} className="relative flex h-full w-full items-center justify-center">
             <Menu className="h-5 w-5 text-slate-300" />
+            {!!pendingOnlineBookings && (
+              <span className="absolute right-2.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-semibold text-white ring-2 ring-slate-900">
+                {pendingOnlineBookings > 9 ? "9+" : pendingOnlineBookings}
+              </span>
+            )}
           </motion.span>
         </button>
       </nav>
@@ -123,6 +131,13 @@ export function MobileNav() {
                 </button>
               </div>
 
+              <MoreLink
+                to="/online-bookings"
+                label="Online Bookings"
+                icon={Globe}
+                badgeCount={pendingOnlineBookings}
+                onClick={() => setMoreOpen(false)}
+              />
               <MoreLink to="/transactions" label="Transactions" icon={CreditCard} onClick={() => setMoreOpen(false)} />
               <MoreLink to="/expenses" label="Expenses" icon={Receipt} onClick={() => setMoreOpen(false)} />
               <MoreLink to="/reports" label="Reports" icon={BarChart3} onClick={() => setMoreOpen(false)} />
@@ -161,11 +176,13 @@ function MoreLink({
   label,
   icon: Icon,
   onClick,
+  badgeCount,
 }: {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   onClick: () => void;
+  badgeCount?: number;
 }) {
   return (
     <NavLink
@@ -181,7 +198,12 @@ function MoreLink({
       }
     >
       <Icon className="h-5 w-5" />
-      {label}
+      <span className="flex-1">{label}</span>
+      {!!badgeCount && (
+        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+          {badgeCount > 9 ? "9+" : badgeCount}
+        </span>
+      )}
     </NavLink>
   );
 }
