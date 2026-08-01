@@ -254,16 +254,19 @@ export default function NewBooking() {
     };
   }, [checkIn, checkOut]);
 
-  // If the currently selected room becomes unavailable because the dates
-  // changed, clear the selection so the guest can't accidentally submit a
-  // conflicting booking.
+  // If the currently selected room becomes genuinely unavailable (another
+  // confirmed/checked-in booking now overlaps) because the dates changed,
+  // clear the selection so staff can't accidentally submit a conflicting
+  // booking. A pending online request does NOT clear the selection — per
+  // the "pending bookings must never block dates" rule (matching the guest
+  // website's own behavior), reception can still book the room; they just
+  // see a heads-up that an online request is also pending for it.
   React.useEffect(() => {
     if (roomId && bookedRoomIds.has(roomId)) {
       setValue("room_id", "");
       toast.error("That room is no longer available for the selected dates — please choose another.");
     } else if (roomId && pendingRoomIds.has(roomId)) {
-      setValue("room_id", "");
-      toast.error("That room has a pending online booking request for these dates — approve or reject it from Online Bookings first.");
+      toast.warning("Heads up: there's also a pending online request for this room and these dates. Confirming this booking won't auto-reject it — review it from Online Bookings.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookedRoomIds, pendingRoomIds]);
@@ -318,10 +321,13 @@ export default function NewBooking() {
     }
 
     // Defense in depth: re-check availability right before submitting, in
-    // case another booking (or a new online booking request) was created for
-    // this room/date range while this form was open. The database's
-    // exclusion constraint is the ultimate safety net (caught below), but
-    // this gives a faster, clearer error.
+    // case another booking was created for this room/date range while this
+    // form was open. The database's exclusion constraint is the ultimate
+    // safety net (caught below), but this gives a faster, clearer error.
+    // Only a confirmed/checked-in overlap actually blocks the submission —
+    // a pending online request never blocks a room (same rule the guest
+    // website's create_public_booking() enforces), so it only surfaces as a
+    // heads-up, not a hard stop.
     const { data: conflicting } = await supabase
       .from("bookings")
       .select("id, booking_status")
@@ -329,15 +335,15 @@ export default function NewBooking() {
       .in("booking_status", ["confirmed", "checked_in", "pending_approval"])
       .lt("check_in", values.check_out)
       .gt("check_out", values.check_in)
-      .limit(1);
-    if (conflicting && conflicting.length > 0) {
-      const isPending = conflicting[0].booking_status === "pending_approval";
-      toast.error(
-        isPending
-          ? "This room now has a pending online booking request for an overlapping date range. Approve or reject it from Online Bookings first."
-          : "This room was just booked for an overlapping date range. Please pick another room or dates."
-      );
+      .limit(5);
+    const confirmedConflict = conflicting?.find((c) => c.booking_status !== "pending_approval");
+    if (confirmedConflict) {
+      toast.error("This room was just booked for an overlapping date range. Please pick another room or dates.");
       return;
+    }
+    const hasPendingConflict = conflicting?.some((c) => c.booking_status === "pending_approval");
+    if (hasPendingConflict) {
+      toast.warning("There's also a pending online request for this room and these dates — this booking will still be confirmed. Review the online request separately.");
     }
 
     try {
@@ -611,8 +617,12 @@ export default function NewBooking() {
                   {rooms.map((r) => {
                     const isMaintenance = r.status === "maintenance";
                     const isBooked = bookedRoomIds.has(r.id);
+                    // A pending online request no longer blocks selection —
+                    // only a maintenance room or an actually confirmed/
+                    // checked-in overlap does. Still labeled below so staff
+                    // see there's a competing request before they confirm.
                     const isPending = pendingRoomIds.has(r.id);
-                    const unavailable = isMaintenance || isBooked || isPending;
+                    const unavailable = isMaintenance || isBooked;
                     return (
                       <option key={r.id} value={r.id} disabled={unavailable}>
                         {r.room_number} · {r.room_type} · {formatCurrency(r.price)}/night
