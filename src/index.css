@@ -231,3 +231,35 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Print stylesheet — used when printing the Invoice dialog (#invoice-print).
+   Without this, printing the page as-is would also print the sidebar,
+   topbar, dialog backdrop tint, and any dark-mode background colors, which
+   looks broken on paper. This hides everything except the invoice content
+   and resets it to a clean, borderless, ink-friendly white page. Any other
+   dialog (confirm/edit/etc.) simply has no #invoice-print element, so this
+   rule has no effect outside of printing an invoice. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #invoice-print,
+  #invoice-print * {
+    visibility: visible;
+  }
+  #invoice-print {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0.5in;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black;
+  }
+  @page {
+    margin: 0.4in;
+  }
+}

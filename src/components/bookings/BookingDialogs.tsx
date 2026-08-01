@@ -1,13 +1,13 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
+import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2, Plus, Trash2, Undo2, CheckCircle2, User, DoorClosed, Download } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime, cn } from "@/lib/utils";
 import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { paymentStatusTone, bookingStatusTone } from "@/lib/badge-tones";
 import type { BookingService, BookingWithRelations, PaymentMethod, Service, Transaction } from "@/lib/database.types";
@@ -1057,38 +1057,66 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
   // figure rather than a fabricated profit/margin number.
   const netRevenue = booking.total_amount - booking.discount - refundTotal;
 
+  const isPaidInFull = booking.remaining_balance <= 0;
+
+  const downloadInvoicePng = async () => {
+    const node = document.getElementById("invoice-print");
+    if (!node) return;
+    const { default: html2canvas } = await import("html2canvas");
+    const canvas = await html2canvas(node, { backgroundColor: "#ffffff", scale: 2 });
+    const link = document.createElement("a");
+    link.download = `invoice-${booking.booking_number}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
   return (
-    <Dialog open={!!booking} onClose={onClose} title="Invoice" className="max-w-lg">
-      <div id="invoice-print" className="space-y-5 text-sm">
+    <Dialog open={!!booking} onClose={onClose} title="Invoice" className="max-w-xl">
+      <div id="invoice-print" className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-700 shadow-sm sm:p-8">
         {/* Letterhead */}
-        <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white">
-              <Building2 className="h-5 w-5" />
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-navy-700 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-navy-500 to-navy-700 text-white shadow-sm">
+              <Building2 className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-lg font-semibold leading-tight text-slate-900">Jikmis Apartment</p>
-              <p className="text-xs text-slate-400">Front Desk · Booking Invoice</p>
+              <p className="text-xl font-semibold leading-tight text-slate-900">Jikmis Apartment</p>
+              <p className="text-xs text-slate-400">Front desk reservations &amp; guest services</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-400">Invoice For</p>
-            <p className="font-semibold text-slate-900">{booking.booking_number}</p>
-            <p className="text-xs text-slate-400">{formatDate(booking.created_at)}</p>
+            <p className="text-2xl font-semibold uppercase tracking-wide text-navy-700">Invoice</p>
+            <p className="mt-1 text-xs text-slate-400">Invoice No.</p>
+            <p className="font-mono text-sm font-semibold text-slate-800">{booking.booking_number}</p>
           </div>
         </div>
 
+        {/* Meta row: dates + status */}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <Info label="Issue Date" value={formatDate(booking.created_at)} />
+            <Info label="Source" value={BOOKING_SOURCE_LABELS[booking.booking_source]} />
+          </div>
+          <Badge tone={isPaidInFull ? "green" : paymentStatusTone(booking.payment_status)} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide">
+            {isPaidInFull ? "Paid in Full" : booking.payment_status === "partial" ? "Partially Paid" : "Unpaid"}
+          </Badge>
+        </div>
+
         {/* Billed to / stay details */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
           <div>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Billed To</p>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <User className="h-3.5 w-3.5" /> Billed To
+            </p>
             <Info label="Guest" value={booking.guest?.full_name} />
             <div className="mt-2">
               <Info label="Phone" value={booking.guest?.phone ?? "—"} />
             </div>
           </div>
           <div>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Stay Details</p>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <DoorClosed className="h-3.5 w-3.5" /> Stay Details
+            </p>
             <Info label="Room" value={`${booking.room?.room_number} · ${booking.room?.room_type}`} />
             <div className="mt-2 grid grid-cols-2 gap-2">
               <Info label="Check-in" value={formatDate(booking.check_in)} />
@@ -1098,28 +1126,28 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
         </div>
 
         {/* Itemized charges */}
-        <div className="overflow-hidden rounded-xl border border-slate-100">
+        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-                <th className="px-3 py-2">Description</th>
-                <th className="px-3 py-2 text-center">Qty</th>
-                <th className="px-3 py-2 text-right">Amount</th>
+              <tr className="bg-navy-700 text-left text-xs font-semibold uppercase tracking-wide text-white">
+                <th className="px-3 py-2.5">Description</th>
+                <th className="px-3 py-2.5 text-center">Qty</th>
+                <th className="px-3 py-2.5 text-right">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               <tr>
-                <td className="px-3 py-2 text-slate-700">
+                <td className="px-3 py-2.5 text-slate-700">
                   Room Charge <span className="text-xs text-slate-400">({formatCurrency(ratePerNight)}/night)</span>
                 </td>
-                <td className="px-3 py-2 text-center text-slate-500">{booking.nights}</td>
-                <td className="px-3 py-2 text-right font-medium text-slate-800">{formatCurrency(roomCharge)}</td>
+                <td className="px-3 py-2.5 text-center text-slate-500">{booking.nights}</td>
+                <td className="px-3 py-2.5 text-right font-medium text-slate-800">{formatCurrency(roomCharge)}</td>
               </tr>
-              {addOns.map((a) => (
-                <tr key={a.id}>
-                  <td className="px-3 py-2 text-slate-700">{a.name}</td>
-                  <td className="px-3 py-2 text-center text-slate-500">{a.quantity}</td>
-                  <td className="px-3 py-2 text-right font-medium text-slate-800">{formatCurrency(a.unit_price * a.quantity)}</td>
+              {addOns.map((a, i) => (
+                <tr key={a.id} className={i % 2 === 0 ? undefined : "bg-slate-50/60"}>
+                  <td className="px-3 py-2.5 text-slate-700">{a.name}</td>
+                  <td className="px-3 py-2.5 text-center text-slate-500">{a.quantity}</td>
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-800">{formatCurrency(a.unit_price * a.quantity)}</td>
                 </tr>
               ))}
             </tbody>
@@ -1127,48 +1155,66 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
         </div>
 
         {/* Totals */}
-        <div className="space-y-1.5 rounded-xl bg-slate-50 px-4 py-3">
-          {booking.discount > 0 && (
+        <div className="mt-5 flex justify-end">
+          <div className="w-full max-w-xs space-y-1.5">
+            {booking.discount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Discount</span>
+                <span className="font-medium text-slate-800">-{formatCurrency(booking.discount)}</span>
+              </div>
+            )}
+            {booking.tax > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tax</span>
+                <span className="font-medium text-slate-800">+{formatCurrency(booking.tax)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
-              <span className="text-slate-500">Discount</span>
-              <span className="font-medium text-slate-800">-{formatCurrency(booking.discount)}</span>
+              <span className="text-slate-500">Total Amount</span>
+              <span className="font-medium text-slate-800">{formatCurrency(booking.total_amount)}</span>
             </div>
-          )}
-          {booking.tax > 0 && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Tax</span>
-              <span className="font-medium text-slate-800">+{formatCurrency(booking.tax)}</span>
+              <span className="text-slate-500">Amount Paid</span>
+              <span className="font-medium text-slate-800">{formatCurrency(booking.advance_paid)}</span>
             </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-slate-500">Total Amount</span>
-            <span className="font-medium text-slate-800">{formatCurrency(booking.total_amount)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Amount Paid</span>
-            <span className="font-medium text-slate-800">{formatCurrency(booking.advance_paid)}</span>
-          </div>
-          {refundTotal > 0 && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Refunded</span>
-              <span className="font-medium text-rose-600">-{formatCurrency(refundTotal)}</span>
+            {refundTotal > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Refunded</span>
+                <span className="font-medium text-rose-600">-{formatCurrency(refundTotal)}</span>
+              </div>
+            )}
+            <div
+              className={cn(
+                "mt-2 flex items-center justify-between rounded-lg px-3 py-2.5 text-base font-semibold",
+                isPaidInFull ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+              )}
+            >
+              <span className="flex items-center gap-1.5">
+                {isPaidInFull && <CheckCircle2 className="h-4 w-4" />}
+                {isPaidInFull ? "Paid in Full" : "Balance Due"}
+              </span>
+              <span>{isPaidInFull ? formatCurrency(0) : formatCurrency(booking.remaining_balance)}</span>
             </div>
-          )}
-          <div className="flex justify-between border-t border-slate-200 pt-1.5 text-base font-semibold text-slate-900">
-            <span>Balance Due</span>
-            <span className="text-brand-600">{formatCurrency(booking.remaining_balance)}</span>
-          </div>
-          <div className="flex justify-between pt-1 text-xs text-slate-400">
-            <span>Net Revenue (after discount &amp; refunds)</span>
-            <span>{formatCurrency(netRevenue)}</span>
+            <div className="flex justify-between pt-1 text-xs text-slate-400">
+              <span>Net Revenue (after discount &amp; refunds)</span>
+              <span>{formatCurrency(netRevenue)}</span>
+            </div>
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-400">Thank you for staying with Jikmis Apartment!</p>
+        <div className="mt-6 border-t border-dashed border-slate-200 pt-4 text-center">
+          <p className="text-sm font-medium text-slate-600">Thank you for staying with Jikmis Apartment!</p>
+          <p className="mt-1 text-xs text-slate-400">
+            This is a computer-generated invoice and does not require a signature. For questions about this invoice, please contact the front desk.
+          </p>
+        </div>
       </div>
       <div className="mt-5 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={onClose}>
           Close
+        </Button>
+        <Button variant="outline" onClick={downloadInvoicePng}>
+          <Download className="h-4 w-4" /> Download PNG
         </Button>
         <Button onClick={() => window.print()}>
           <Printer className="h-4 w-4" /> Print
