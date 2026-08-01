@@ -43,7 +43,11 @@ export async function sendNotification(notification: NotificationLog): Promise<S
     return outcome;
   }
 
-  const result = await provider.send({ to: notification.recipient, message: notification.message });
+  const result = await provider.send({
+    to: notification.recipient,
+    message: notification.message,
+    subject: notification.subject ?? undefined,
+  });
   const outcome: SendOutcome = result.success
     ? { status: "sent", provider: provider.name }
     : { status: "failed", provider: provider.name, failureReason: result.error ?? "Delivery failed" };
@@ -83,4 +87,20 @@ export async function getLatestNotificationForBooking(bookingId: string): Promis
     .limit(1)
     .maybeSingle();
   return (data as NotificationLog) ?? null;
+}
+
+/** Fetches every notification_log row this approve/reject call just queued —
+ *  approve_booking()/reject_booking() insert an 'sms' row always, plus an
+ *  'email' row when the guest gave an address, so a single "latest" lookup
+ *  isn't enough to dispatch both. Scoped to rows still 'pending' so a
+ *  re-dispatch after this booking's history has been retried before doesn't
+ *  re-send anything already sent/failed. */
+export async function getPendingNotificationsForBooking(bookingId: string): Promise<NotificationLog[]> {
+  const { data } = await supabase
+    .from("notification_log")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  return (data as NotificationLog[]) ?? [];
 }

@@ -176,6 +176,9 @@ export interface NotificationLog {
   template: NotificationTemplate;
   recipient: string | null;
   provider: string | null;
+  /** Email-only subject line (e.g. "Booking Confirmed – Jikmis Apartment").
+   *  Always null for sms/whatsapp rows. */
+  subject: string | null;
   message: string;
   status: NotificationStatus;
   failure_reason: string | null;

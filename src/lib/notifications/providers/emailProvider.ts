@@ -1,19 +1,34 @@
+import { supabase } from "@/lib/supabase";
 import type { NotificationProvider, NotificationPayload, NotificationResult } from "../types";
 
 // ----------------------------------------------------------------------------
-// Email provider — STUB, same shape as smsProvider.ts. Swap in Gmail SMTP,
-// SendGrid, Resend, etc. here when ready. Note: guests.email is currently
-// always null (no booking form collects it yet), so in practice this
-// provider won't be invoked until that's added — the column and this
-// provider exist so that's a frontend-only change when the time comes.
+// Email provider — delivers via the `send-email` Supabase Edge Function,
+// which sends through Gmail SMTP using the official jikmisdonkhang@gmail.com
+// account. The Gmail App Password never touches this file or the browser
+// bundle: it lives only in the edge function's environment (Supabase Edge
+// Function secrets), read there via Deno.env.get(). This file just invokes
+// the function with a staff-authenticated request and reports the outcome.
 // ----------------------------------------------------------------------------
 export const emailProvider: NotificationProvider = {
-  name: "email-stub",
+  name: "gmail-smtp",
   channel: "email",
-  async send(_payload: NotificationPayload): Promise<NotificationResult> {
-    return {
-      success: false,
-      error: "Email provider not configured yet. Add an email service (e.g. Gmail SMTP, SendGrid) in emailProvider.ts to enable delivery.",
-    };
+  async send(payload: NotificationPayload): Promise<NotificationResult> {
+    if (!payload.subject) {
+      return { success: false, error: "Missing email subject" };
+    }
+
+    const { data, error } = await supabase.functions.invoke("send-email", {
+      body: { to: payload.to, subject: payload.subject, message: payload.message },
+    });
+
+    if (error) {
+      return { success: false, error: error.message ?? "Failed to reach the email service" };
+    }
+
+    if (!data?.ok) {
+      return { success: false, error: data?.error ?? "Email delivery failed" };
+    }
+
+    return { success: true };
   },
 };

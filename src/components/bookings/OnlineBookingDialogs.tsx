@@ -10,8 +10,10 @@ import { useBookingPrice } from "@/hooks/useBookingPrice";
 import { formatCurrency, formatDate, formatDateTime, nightsBetween, todayISO, addDaysISO } from "@/lib/utils";
 import { BOOKING_SOURCE_LABELS, PRICING_METHOD_LABELS, REJECTION_REASON_PRESETS } from "@/lib/constants";
 import { bookingStatusTone, paymentStatusTone, notificationStatusTone } from "@/lib/badge-tones";
-import { sendNotification, retryNotification, getLatestNotificationForBooking } from "@/lib/notifications/NotificationService";
+import { sendNotification, retryNotification, getPendingNotificationsForBooking } from "@/lib/notifications/NotificationService";
 import type { BookingWithRelations, Room, NotificationLog } from "@/lib/database.types";
+
+const GMAIL_SENDER = "jikmisdonkhang@gmail.com";
 
 /** Best-effort device string for the audit trail — a real client IP can only
  *  be captured server-side (trusted proxy headers), so that field stays
@@ -22,16 +24,53 @@ function deviceInfo() {
   return navigator.userAgent.slice(0, 300);
 }
 
-/** Fires after approve/reject succeeds: looks up the notification_log row
- *  that RPC just queued, attempts delivery through NotificationService, and
- *  returns a toast-ready summary. Never throws — a failed send is an
- *  expected, normal outcome (no provider is configured yet), not an error
- *  in the approve/reject flow itself. */
-async function dispatchAndDescribe(bookingId: string): Promise<{ notification: NotificationLog | null; sent: boolean }> {
-  const notification = await getLatestNotificationForBooking(bookingId);
-  if (!notification) return { notification: null, sent: false };
-  const outcome = await sendNotification(notification);
-  return { notification: { ...notification, status: outcome.status }, sent: outcome.status === "sent" };
+interface DispatchSummary {
+  /** Outcome of the 'email' channel row, if the guest gave an address —
+   *  undefined when no email notification was queued at all. */
+  email?: { sent: boolean };
+  /** Outcome of the 'sms' channel row (always queued by approve/reject). */
+  sms: { sent: boolean };
+}
+
+/** Fires after approve/reject succeeds: looks up every notification_log row
+ *  that RPC just queued (sms always, email when the guest gave an address)
+ *  and attempts delivery through NotificationService for each. Never
+ *  throws — a failed send is an expected, normal outcome, not an error in
+ *  the approve/reject flow itself; per spec, delivery failure must never
+ *  roll back the booking decision that already succeeded. */
+async function dispatchAndDescribe(bookingId: string): Promise<DispatchSummary> {
+  const pending = await getPendingNotificationsForBooking(bookingId);
+  const summary: DispatchSummary = { sms: { sent: false } };
+
+  for (const notification of pending) {
+    const outcome = await sendNotification(notification);
+    if (notification.channel === "email") {
+      summary.email = { sent: outcome.status === "sent" };
+    } else if (notification.channel === "sms") {
+      summary.sms = { sent: outcome.status === "sent" };
+    }
+  }
+
+  return summary;
+}
+
+/** Builds the exact toast wording the spec calls for. When the guest gave an
+ *  email, the email outcome drives the message (naming the Gmail sender
+ *  explicitly); otherwise falls back to the SMS-oriented wording used before
+ *  email support existed. */
+function describeDispatch(summary: DispatchSummary, action: "approved" | "rejected", guestName: string): { kind: "success" | "warning"; text: string } {
+  if (summary.email) {
+    if (summary.email.sent) {
+      const noun = action === "approved" ? "Confirmation" : "Rejection";
+      return { kind: "success", text: `✅ Booking successfully ${action}. ${noun} email sent from ${GMAIL_SENDER}.` };
+    }
+    return { kind: "warning", text: "⚠ Booking updated successfully. Email delivery failed. Retry available." };
+  }
+
+  if (summary.sms.sent) {
+    return { kind: "success", text: `Booking successfully ${action}. Confirmation message sent to ${guestName}.` };
+  }
+  return { kind: "warning", text: "Booking updated successfully. Notification delivery failed — retry from the booking's detail view." };
 }
 
 export function NotificationStatusBadge({ status }: { status: NotificationLog["status"] }) {
@@ -251,13 +290,10 @@ export function ApproveBookingDialog({
       setError(rpcError.message);
       return;
     }
-    const { sent } = await dispatchAndDescribe(booking.id);
+    const summary = await dispatchAndDescribe(booking.id);
     setSaving(false);
-    if (sent) {
-      toast.success(`Booking successfully approved. Confirmation message sent to ${booking.guest?.full_name ?? "the guest"}.`);
-    } else {
-      toast.warning("Booking updated successfully. Notification delivery failed — retry from the booking's detail view.");
-    }
+    const { kind, text } = describeDispatch(summary, "approved", booking.guest?.full_name ?? "the guest");
+    toast[kind](text);
     onDone();
     onClose();
   };
@@ -326,13 +362,10 @@ export function RejectBookingDialog({
       setError(rpcError.message);
       return;
     }
-    const { sent } = await dispatchAndDescribe(booking.id);
+    const summary = await dispatchAndDescribe(booking.id);
     setSaving(false);
-    if (sent) {
-      toast.success(`Booking successfully rejected. Cancellation message sent to ${booking.guest?.full_name ?? "the guest"}.`);
-    } else {
-      toast.warning("Booking updated successfully. Notification delivery failed — retry from the booking's detail view.");
-    }
+    const { kind, text } = describeDispatch(summary, "rejected", booking.guest?.full_name ?? "the guest");
+    toast[kind](text);
     onDone();
     onClose();
   };
