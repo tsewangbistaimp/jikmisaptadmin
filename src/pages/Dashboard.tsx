@@ -287,6 +287,33 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Executive summary hero — a single, unmissable headline figure above
+          the detailed stat grid, the way Stripe/Linear-style dashboards lead
+          with "the one number that matters" before the supporting detail. */}
+      <div className="relative overflow-hidden rounded-3xl border border-navy-800/10 bg-gradient-to-br from-navy-700 via-navy-600 to-navy-800 p-6 text-white shadow-xl dark:border-white/5 sm:p-8">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-gold-400/10" />
+        <div className="pointer-events-none absolute -bottom-16 right-24 h-40 w-40 rounded-full bg-emerald-luxe-500/10" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-navy-200">Net Profit · This Month</p>
+            <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{formatCurrency(netProfitThisMonth)}</p>
+            <p className="mt-2 text-sm text-navy-200">
+              {formatCurrency(revenueThisMonth)} revenue − {formatCurrency(expensesThisMonth)} expenses
+            </p>
+          </div>
+          <div className="flex gap-6 sm:gap-8">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-navy-200">Occupancy</p>
+              <p className="text-2xl font-semibold text-gold-300">{rooms.length > 0 ? Math.round((occupiedRooms / rooms.length) * 100) : 0}%</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-navy-200">Guests In-House</p>
+              <p className="text-2xl font-semibold text-emerald-luxe-300">{statusCounts.checked_in}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard
@@ -395,7 +422,7 @@ export default function Dashboard() {
           <MiniCalendar highlightDates={checkInDates} />
         </Card>
         <Card className="flex flex-col justify-center p-5">
-          <p className="mb-3 text-sm font-semibold text-slate-800">Today's Check In / Out</p>
+          <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Today's Check In / Out</p>
           {checkInOutTotal === 0 ? (
             <EmptyState title="Nothing today" />
           ) : (
@@ -601,10 +628,10 @@ function QuickAction({
   tone: "blue" | "green" | "amber" | "brand";
 }) {
   const toneClasses: Record<string, string> = {
-    blue: "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:bg-blue-500/15",
-    green: "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-100",
-    amber: "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:bg-amber-500/15",
-    brand: "bg-brand-50 text-brand-600 hover:bg-brand-100",
+    blue: "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/15",
+    green: "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/15",
+    amber: "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15",
+    brand: "bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-500/15",
   };
   return (
     <Link

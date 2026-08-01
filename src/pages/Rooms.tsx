@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, DoorClosed, ImagePlus, Loader2, X } from "lucide-react";
+import { Plus, Pencil, Trash2, DoorClosed, ImagePlus, Loader2, X, BedDouble, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,51 +77,64 @@ export default function Rooms() {
               key={r.id}
               onClick={() => setViewing(r)}
               className={cn(
-                "cursor-pointer p-5 transition-shadow hover:shadow-lg",
+                "group cursor-pointer overflow-hidden p-0 transition-shadow hover:shadow-lg",
                 highlightId === r.id && "ring-2 ring-brand-400"
               )}
             >
-              <div className="relative -mx-5 -mt-5 mb-3 h-32 w-[calc(100%+2.5rem)] overflow-hidden">
+              <div className="relative h-36 w-full overflow-hidden">
                 {r.image_url ? (
-                  <img src={r.image_url} alt={`Room ${r.room_number}`} className="h-full w-full object-cover" />
+                  <img
+                    src={r.image_url}
+                    alt={`Room ${r.room_number}`}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300 dark:bg-slate-900 dark:text-slate-700">
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-slate-300 dark:from-slate-900 dark:to-slate-800 dark:text-slate-700">
                     <DoorClosed className="h-9 w-9" />
                   </div>
                 )}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
                 <Badge tone={roomStatusTone(r.status)} className="absolute right-3 top-3 capitalize shadow-sm">
                   {ROOM_STATUS_LABELS[r.status]}
                 </Badge>
+                <p className="absolute bottom-2 left-4 text-base font-semibold text-white drop-shadow-sm">Room {r.room_number}</p>
               </div>
-              <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Room {r.room_number}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{r.room_type}</p>
-              <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">{formatCurrency(r.price)} / night</p>
 
-              {isAdmin && (
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditing(r);
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleting(r);
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
-                  </Button>
-                </div>
-              )}
+              <div className="p-5 pt-4">
+                <p className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+                  <BedDouble className="h-3.5 w-3.5 shrink-0" /> {r.room_type}
+                </p>
+                <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-navy-700 dark:text-gold-300">
+                  <Wallet className="h-3.5 w-3.5 shrink-0" /> {formatCurrency(r.price)}{" "}
+                  <span className="font-normal text-slate-400 dark:text-slate-500">/ night</span>
+                </p>
+
+                {isAdmin && (
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditing(r);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleting(r);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </Card>
           ))}
         </div>
@@ -229,9 +242,9 @@ function RoomDetailDialog({ room, onClose }: { room: Room | null; onClose: () =>
         </div>
 
         {!isMaintenance && !isAvailable && availableFrom && (
-          <div className="rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-900">
-            <p className="text-xs text-slate-400 dark:text-slate-500">Available From</p>
-            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{formatDate(availableFrom)}</p>
+          <div className="rounded-xl bg-navy-50 px-4 py-3 dark:bg-navy-500/10">
+            <p className="text-xs text-navy-500 dark:text-navy-300">Available From</p>
+            <p className="text-base font-semibold text-navy-800 dark:text-navy-100">{formatDate(availableFrom)}</p>
           </div>
         )}
 
@@ -332,7 +345,7 @@ function RoomFormDialog({
                 type="button"
                 onClick={() => setImageUrl(null)}
                 aria-label="Remove photo"
-                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm hover:bg-white"
+                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm hover:bg-white dark:bg-slate-900/90 dark:text-slate-300 dark:hover:bg-slate-900"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -342,7 +355,7 @@ function RoomFormDialog({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-brand-300 hover:text-brand-500 dark:border-slate-700"
+              className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-brand-300 hover:text-brand-500 dark:border-slate-700 dark:text-slate-500 dark:hover:border-brand-500 dark:hover:text-brand-400"
             >
               {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
               <span className="text-xs font-medium">{uploading ? "Uploading…" : "Click to upload a photo"}</span>
@@ -352,7 +365,7 @@ function RoomFormDialog({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mt-1.5 text-xs font-medium text-brand-600 hover:text-brand-700"
+              className="mt-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
             >
               Replace photo
             </button>
@@ -382,7 +395,7 @@ function RoomFormDialog({
               </option>
             ))}
           </Select>
-          <p className="mt-1.5 text-xs text-slate-400">
+          <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
             "Occupied" isn't listed here — whether a room is booked is always calculated from booking dates.
           </p>
         </div>

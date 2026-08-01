@@ -103,7 +103,7 @@ export default function Guests() {
                     <TR key={g.id} className="cursor-pointer" onClick={() => setSelected(g)}>
                       <TD className="font-medium text-slate-900 dark:text-slate-100">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-navy-500 to-navy-700 text-xs font-semibold text-white dark:from-navy-400 dark:to-navy-600">
                             {initials(g.full_name)}
                           </div>
                           {g.full_name}
@@ -126,7 +126,7 @@ export default function Guests() {
                   onClick={() => setSelected(g)}
                   className="flex w-full items-center gap-3 p-4 text-left active:bg-slate-50 dark:active:bg-slate-800/60"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-navy-500 to-navy-700 text-sm font-semibold text-white dark:from-navy-400 dark:to-navy-600">
                     {initials(g.full_name)}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -384,7 +384,7 @@ function GuestProfileDialog({
                     <button
                       title="View Invoice"
                       onClick={() => onInvoice({ ...b, guest } as BookingWithRelations)}
-                      className="text-slate-400 hover:text-brand-600"
+                      className="text-slate-400 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-400"
                     >
                       <Receipt className="h-4 w-4" />
                     </button>
@@ -425,10 +425,10 @@ function GuestProfileDialog({
               {refunds.map((t) => (
                 <li key={t.id} className="flex items-center justify-between rounded-lg bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-sm">
                   <div>
-                    <p className="font-medium text-rose-700">{PAYMENT_METHOD_LABELS[t.payment_method]}</p>
-                    <p className="text-xs text-rose-400">{formatDateTime(t.created_at)}</p>
+                    <p className="font-medium text-rose-700 dark:text-rose-400">{PAYMENT_METHOD_LABELS[t.payment_method]}</p>
+                    <p className="text-xs text-rose-400 dark:text-rose-500">{formatDateTime(t.created_at)}</p>
                   </div>
-                  <p className="font-semibold text-rose-600">-{formatCurrency(t.amount)}</p>
+                  <p className="font-semibold text-rose-600 dark:text-rose-400">-{formatCurrency(t.amount)}</p>
                 </li>
               ))}
             </ul>
@@ -558,13 +558,13 @@ function GuestEditDialog({
           {idPhotoUrl ? (
             <div className="flex items-center gap-3">
               <a href={idPhotoUrl} target="_blank" rel="noreferrer">
-                <img src={idPhotoUrl} alt="Guest ID" className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200 hover:opacity-90" />
+                <img src={idPhotoUrl} alt="Guest ID" className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200 hover:opacity-90 dark:ring-slate-700" />
               </a>
               <button
                 type="button"
                 onClick={() => idFileInputRef.current?.click()}
                 disabled={idPhotoUploading}
-                className="text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+                className="text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50 dark:text-brand-400 dark:hover:text-brand-300"
               >
                 {idPhotoUploading ? "Uploading…" : "Replace photo"}
               </button>
@@ -574,7 +574,7 @@ function GuestEditDialog({
               type="button"
               onClick={() => idFileInputRef.current?.click()}
               disabled={idPhotoUploading}
-              className="flex h-20 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/40 text-brand-500 hover:border-brand-300 hover:bg-brand-50"
+              className="flex h-20 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/40 text-brand-500 hover:border-brand-300 hover:bg-brand-50 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:border-brand-500/50 dark:hover:bg-brand-500/15"
             >
               {idPhotoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
               <span className="text-sm font-medium">{idPhotoUploading ? "Uploading…" : "Add guest ID photo"}</span>
