@@ -201,7 +201,7 @@ export function BookingDetailDialog({
                   <Undo2 className="h-3.5 w-3.5" /> Refund
                 </button>
               )}
-              {onRecordPayment && booking.remaining_balance > 0 && booking.booking_status !== "cancelled" && (
+              {onRecordPayment && booking.remaining_balance > 0 && (booking.booking_status === "confirmed" || booking.booking_status === "checked_in") && (
                 <button
                   onClick={() => onRecordPayment(booking)}
                   className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700"

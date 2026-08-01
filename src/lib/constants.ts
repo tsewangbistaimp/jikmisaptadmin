@@ -21,11 +21,26 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
 };
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
+  pending_approval: "Pending Approval",
   confirmed: "Confirmed",
   checked_in: "Checked In",
   checked_out: "Checked Out",
   cancelled: "Cancelled",
+  rejected: "Rejected",
 };
+
+export const PRICING_METHOD_LABELS: Record<string, string> = {
+  daily: "Daily Rate",
+  monthly: "Monthly Apartment Rate",
+};
+
+export const REJECTION_REASON_PRESETS = [
+  "Room unavailable",
+  "Maintenance",
+  "Fully booked",
+  "Invalid guest information",
+  "Other",
+];
 
 export const ROOM_STATUS_LABELS: Record<string, string> = {
   available: "Available",
@@ -91,6 +106,8 @@ export const ACTIVITY_LOG_LABELS: Record<string, string> = {
   refund: "Refund issued",
   booking_insert: "Booking created",
   booking_update: "Booking updated",
+  booking_approved: "Online booking approved",
+  booking_rejected: "Online booking rejected",
   expenses_insert: "Expense added",
   expenses_update: "Expense updated",
   expenses_deleted: "Expense deleted",
@@ -109,7 +126,7 @@ export const ACTIVITY_LOG_LABELS: Record<string, string> = {
 export const ACTIVITY_LOG_FILTERS: { value: string; label: string; actions: string[] }[] = [
   { value: "all", label: "All Activity", actions: [] },
   { value: "payments", label: "Payments & Refunds", actions: ["payment", "refund"] },
-  { value: "bookings", label: "Bookings", actions: ["booking_insert", "booking_update", "delete_booking"] },
+  { value: "bookings", label: "Bookings", actions: ["booking_insert", "booking_update", "booking_approved", "booking_rejected", "delete_booking"] },
   { value: "expenses", label: "Expenses", actions: ["expenses_insert", "expenses_update", "expenses_deleted"] },
   { value: "rooms", label: "Rooms", actions: ["rooms_insert", "rooms_update", "rooms_deleted"] },
   { value: "guests", label: "Guests", actions: ["guests_insert", "guests_update"] },

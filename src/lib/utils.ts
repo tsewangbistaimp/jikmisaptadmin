@@ -66,6 +66,12 @@ export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function addDaysISO(dateISO: string, days: number) {
+  const d = new Date(dateISO + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export function relativeTime(date: string | Date) {
   const d = typeof date === "string" ? new Date(date) : date;
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000);

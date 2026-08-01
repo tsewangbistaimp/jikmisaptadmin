@@ -9,8 +9,9 @@ export type RoomStatus = "available" | "occupied" | "cleaning" | "maintenance";
 export type BookingSource = "walk_in" | "phone" | "whatsapp" | "website" | "booking_com" | "airbnb";
 export type PaymentMethod = "cash" | "esewa" | "khalti" | "bank_transfer";
 export type PaymentStatus = "paid" | "partial" | "unpaid";
-export type BookingStatus = "confirmed" | "checked_in" | "checked_out" | "cancelled";
+export type BookingStatus = "pending_approval" | "confirmed" | "checked_in" | "checked_out" | "cancelled" | "rejected";
 export type TransactionType = "advance" | "partial" | "final" | "refund";
+export type PricingMethod = "daily" | "monthly";
 
 export interface Profile {
   id: string;
@@ -65,9 +66,38 @@ export interface Booking {
   payment_method: PaymentMethod | null;
   payment_status: PaymentStatus;
   booking_status: BookingStatus;
+  pricing_method: PricingMethod | null;
+  approved_at: string | null;
+  approved_by: string | null;
+  rejected_at: string | null;
+  rejected_by: string | null;
+  rejection_reason: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  updated_at: string;
+}
+
+/** Return shape of the shared public.calculate_booking_price() RPC — the
+ *  single place daily-vs-monthly pricing is decided, called by both this
+ *  dashboard and the guest website. */
+export interface BookingPriceQuote {
+  nights: number;
+  pricing_method: PricingMethod;
+  daily_rate: number;
+  monthly_rate: number | null;
+  total_amount: number;
+}
+
+export interface PricingSettingsRow {
+  room_type_key: "single" | "double" | "family";
+  monthly_rate: number;
+  updated_at: string;
+}
+
+export interface PricingConfigRow {
+  id: true;
+  long_stay_threshold_nights: number;
   updated_at: string;
 }
 

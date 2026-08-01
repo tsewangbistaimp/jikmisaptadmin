@@ -13,6 +13,8 @@ export function paymentStatusTone(status: PaymentStatus) {
 
 export function bookingStatusTone(status: BookingStatus) {
   switch (status) {
+    case "pending_approval":
+      return "amber" as const;
     case "confirmed":
       return "blue" as const;
     case "checked_in":

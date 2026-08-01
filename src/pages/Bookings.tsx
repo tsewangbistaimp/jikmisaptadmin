@@ -294,7 +294,7 @@ export default function Bookings() {
                           <IconButton title="Edit" onClick={() => setEditing(b)}>
                             <Pencil className="h-4 w-4" />
                           </IconButton>
-                          {b.booking_status !== "checked_out" && b.booking_status !== "cancelled" && (
+                          {(b.booking_status === "confirmed" || b.booking_status === "checked_in") && (
                             <IconButton title="Checkout" onClick={() => setCheckingOut(b)}>
                               <LogOut className="h-4 w-4" />
                             </IconButton>
@@ -302,7 +302,7 @@ export default function Bookings() {
                           <IconButton title="Invoice" onClick={() => setInvoicing(b)}>
                             <Receipt className="h-4 w-4" />
                           </IconButton>
-                          {b.remaining_balance > 0 && b.booking_status !== "cancelled" && (
+                          {b.remaining_balance > 0 && (b.booking_status === "confirmed" || b.booking_status === "checked_in") && (
                             <IconButton title="Record Payment" onClick={() => setPaying(b)}>
                               <Wallet className="h-4 w-4" />
                             </IconButton>

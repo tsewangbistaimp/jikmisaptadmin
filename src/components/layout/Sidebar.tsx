@@ -16,9 +16,11 @@ import {
   ChevronsRight,
   Receipt,
   BarChart3,
+  Globe,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { usePendingOnlineBookingsCount } from "@/hooks/useOnlineBookings";
 import { dropdownVariants, SPRING_SOFT, DURATION } from "@/lib/motion";
 
 interface NavItem {
@@ -26,6 +28,7 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   end?: boolean;
+  badgeKey?: "online-bookings";
 }
 
 const navGroups: { label: string; items: NavItem[] }[] = [
@@ -38,6 +41,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/bookings/new", label: "New Booking", icon: PlusCircle },
       { to: "/bookings", label: "Bookings", icon: ClipboardList },
+      { to: "/online-bookings", label: "Online Bookings", icon: Globe, badgeKey: "online-bookings" },
       { to: "/rooms", label: "Rooms", icon: DoorClosed },
       { to: "/guests", label: "Guests", icon: Users },
       { to: "/services", label: "Services", icon: Sparkles },
@@ -67,6 +71,7 @@ function SidebarNavLink({
   icon: Icon,
   label,
   collapsed,
+  badgeCount,
 }: {
   to: string;
   end?: boolean;
@@ -74,13 +79,14 @@ function SidebarNavLink({
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   collapsed: boolean;
+  badgeCount?: number;
 }) {
   return (
     <NavLink
       to={to}
       end={end}
       onClick={onClick}
-      title={collapsed ? label : undefined}
+      title={collapsed ? (badgeCount ? `${label} (${badgeCount})` : label) : undefined}
       className={cn(
         "group relative flex items-center gap-3 overflow-hidden rounded-full px-4 py-2.5 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800",
         collapsed && "justify-center px-0"
@@ -95,20 +101,32 @@ function SidebarNavLink({
               transition={SPRING_SOFT}
             />
           )}
-          <Icon
-            className={cn(
-              "relative z-10 h-4 w-4 shrink-0 transition-[color,transform] duration-150 ease-out group-hover:scale-105",
-              isActive ? "text-brand-700 dark:text-brand-400" : "text-slate-500 dark:text-slate-400"
+          <span className="relative z-10 shrink-0">
+            <Icon
+              className={cn(
+                "h-4 w-4 transition-[color,transform] duration-150 ease-out group-hover:scale-105",
+                isActive ? "text-brand-700 dark:text-brand-400" : "text-slate-500 dark:text-slate-400"
+              )}
+            />
+            {!!badgeCount && collapsed && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-semibold text-white ring-2 ring-white dark:ring-slate-900">
+                {badgeCount > 9 ? "9+" : badgeCount}
+              </span>
             )}
-          />
+          </span>
           {!collapsed && (
             <span
               className={cn(
-                "relative z-10 truncate transition-colors duration-150",
+                "relative z-10 flex flex-1 items-center justify-between truncate transition-colors duration-150",
                 isActive ? "font-semibold text-brand-700 dark:text-brand-400" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100"
               )}
             >
-              {label}
+              <span className="truncate">{label}</span>
+              {!!badgeCount && (
+                <span className="ml-2 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                  {badgeCount > 9 ? "9+" : badgeCount}
+                </span>
+              )}
             </span>
           )}
         </>
@@ -119,6 +137,7 @@ function SidebarNavLink({
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin, profile, signOut } = useAuth();
+  const pendingOnlineBookings = usePendingOnlineBookingsCount();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(() => {
@@ -184,7 +203,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             )}
             <div className="space-y-0.5">
               {group.items.map((item) => (
-                <SidebarNavLink key={item.to} to={item.to} end={item.end} onClick={onNavigate} icon={item.icon} label={item.label} collapsed={collapsed} />
+                <SidebarNavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={onNavigate}
+                  icon={item.icon}
+                  label={item.label}
+                  collapsed={collapsed}
+                  badgeCount={item.badgeKey === "online-bookings" ? pendingOnlineBookings : undefined}
+                />
               ))}
             </div>
           </div>

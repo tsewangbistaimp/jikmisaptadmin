@@ -1,7 +1,8 @@
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Bell, PlusCircle, LogIn, LogOut, Wallet, Inbox, Moon, Sun } from "lucide-react";
+import { toast } from "sonner";
+import { Search, Bell, PlusCircle, LogIn, LogOut, Wallet, Inbox, Moon, Sun, Globe } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/lib/supabase";
@@ -19,7 +20,7 @@ function useGreeting() {
   }, []);
 }
 
-type NotificationType = "checkin" | "checkout" | "payment_due";
+type NotificationType = "checkin" | "checkout" | "payment_due" | "online_booking";
 
 interface NotificationItem {
   id: string;
@@ -39,6 +40,17 @@ interface NotificationBookingRow {
   room: { room_number: string } | null;
 }
 
+interface PendingOnlineBookingRow {
+  id: string;
+  booking_number: string;
+  check_in: string;
+  check_out: string;
+  total_amount: number;
+  pricing_method: string | null;
+  guest: { full_name: string } | null;
+  room: { room_type: string } | null;
+}
+
 // How far ahead an unpaid balance's checkout date can be before we start
 // surfacing a "payment due soon" notification for it — matches the "3-4
 // days" lead time requested for the front desk to start following up.
@@ -53,68 +65,136 @@ export function Topbar() {
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
+  const seenPendingRef = React.useRef<Set<string> | null>(null);
 
-  React.useEffect(() => {
+  const loadNotifications = React.useCallback(async () => {
     const today = todayISO();
     const horizon = new Date();
     horizon.setDate(horizon.getDate() + PAYMENT_DUE_LOOKAHEAD_DAYS);
     const horizonISO = horizon.toISOString().slice(0, 10);
 
-    supabase
-      .from("bookings")
-      .select("id, booking_number, check_in, check_out, booking_status, remaining_balance, guest:guests(full_name), room:rooms(room_number)")
-      .in("booking_status", ["confirmed", "checked_in"])
-      .lte("check_in", horizonISO)
-      .gte("check_out", today)
-      .then(({ data }) => {
-        const rows = (data as unknown as NotificationBookingRow[]) ?? [];
-        const items: NotificationItem[] = [];
+    const [{ data: stayData }, { data: pendingData }] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("id, booking_number, check_in, check_out, booking_status, remaining_balance, guest:guests(full_name), room:rooms(room_number)")
+        .in("booking_status", ["confirmed", "checked_in"])
+        .lte("check_in", horizonISO)
+        .gte("check_out", today),
+      supabase
+        .from("bookings")
+        .select("id, booking_number, check_in, check_out, total_amount, pricing_method, guest:guests(full_name), room:rooms(room_type)")
+        .eq("booking_source", "website")
+        .eq("booking_status", "pending_approval")
+        .order("created_at", { ascending: false }),
+    ]);
 
-        // Arriving today
-        rows
-          .filter((b) => b.check_in === today)
-          .forEach((b) =>
-            items.push({
-              id: `checkin-${b.id}`,
-              type: "checkin",
-              title: `${b.guest?.full_name ?? "Guest"} checks in today`,
-              subtitle: `${b.booking_number} · Room ${b.room?.room_number ?? "—"}`,
-            })
-          );
+    const rows = (stayData as unknown as NotificationBookingRow[]) ?? [];
+    const pendingRows = (pendingData as unknown as PendingOnlineBookingRow[]) ?? [];
+    const items: NotificationItem[] = [];
 
-        // Departing today (only actually-in-house bookings, i.e. checked_in)
-        rows
-          .filter((b) => b.check_out === today && b.booking_status === "checked_in")
-          .forEach((b) =>
-            items.push({
-              id: `checkout-${b.id}`,
-              type: "checkout",
-              title: `${b.guest?.full_name ?? "Guest"} checks out today`,
-              subtitle: `${b.booking_number} · Room ${b.room?.room_number ?? "—"}`,
-            })
-          );
+    // New online booking requests awaiting approval — surfaced first since
+    // these need staff action, unlike the informational check-in/out items.
+    pendingRows.forEach((b) =>
+      items.push({
+        id: `online-${b.id}`,
+        type: "online_booking",
+        title: `${b.guest?.full_name ?? "Guest"} requested ${b.room?.room_type ?? "a room"}`,
+        subtitle: `${b.booking_number} · ${formatDate(b.check_in)} → ${formatDate(b.check_out)} · ${formatCurrency(b.total_amount)}`,
+      })
+    );
 
-        // Outstanding balance with checkout coming up within the lookahead window
-        rows
-          .filter((b) => Number(b.remaining_balance) > 0 && b.check_out >= today && b.check_out <= horizonISO)
-          .forEach((b) =>
-            items.push({
-              id: `payment-${b.id}`,
-              type: "payment_due",
-              title: `${formatCurrency(Number(b.remaining_balance))} due · ${b.guest?.full_name ?? "Guest"}`,
-              subtitle: `${b.booking_number} · Checkout ${formatDate(b.check_out)}`,
-            })
-          );
+    // Arriving today
+    rows
+      .filter((b) => b.check_in === today)
+      .forEach((b) =>
+        items.push({
+          id: `checkin-${b.id}`,
+          type: "checkin",
+          title: `${b.guest?.full_name ?? "Guest"} checks in today`,
+          subtitle: `${b.booking_number} · Room ${b.room?.room_number ?? "—"}`,
+        })
+      );
 
-        setNotifications(items);
-      });
-  }, []);
+    // Departing today (only actually-in-house bookings, i.e. checked_in)
+    rows
+      .filter((b) => b.check_out === today && b.booking_status === "checked_in")
+      .forEach((b) =>
+        items.push({
+          id: `checkout-${b.id}`,
+          type: "checkout",
+          title: `${b.guest?.full_name ?? "Guest"} checks out today`,
+          subtitle: `${b.booking_number} · Room ${b.room?.room_number ?? "—"}`,
+        })
+      );
+
+    // Outstanding balance with checkout coming up within the lookahead window
+    rows
+      .filter((b) => Number(b.remaining_balance) > 0 && b.check_out >= today && b.check_out <= horizonISO)
+      .forEach((b) =>
+        items.push({
+          id: `payment-${b.id}`,
+          type: "payment_due",
+          title: `${formatCurrency(Number(b.remaining_balance))} due · ${b.guest?.full_name ?? "Guest"}`,
+          subtitle: `${b.booking_number} · Checkout ${formatDate(b.check_out)}`,
+        })
+      );
+
+    setNotifications(items);
+
+    // Popup toast for genuinely new pending requests only (tracked via a ref
+    // so re-fetches triggered by unrelated changes — e.g. a payment recorded
+    // elsewhere — don't re-toast requests already seen in this session).
+    const seen = seenPendingRef.current;
+    const currentIds = new Set(pendingRows.map((b) => b.id));
+    if (seen) {
+      pendingRows
+        .filter((b) => !seen.has(b.id))
+        .forEach((b) => {
+          toast.custom(() => (
+            <button
+              onClick={() => {
+                navigate("/online-bookings");
+              }}
+              className="flex w-full items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-xl dark:border-slate-700 dark:bg-slate-800"
+            >
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400">
+                <Globe className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">New Online Booking Request</span>
+                <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+                  {b.guest?.full_name ?? "Guest"} · {b.room?.room_type ?? "Room"} · {formatDate(b.check_in)} → {formatDate(b.check_out)}
+                </span>
+              </span>
+            </button>
+          ));
+        });
+    }
+    seenPendingRef.current = currentIds;
+  }, [navigate]);
+
+  React.useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  // Live refresh + popup: any change to bookings (a new website request, an
+  // approval/rejection, a payment, a checkout) re-evaluates notifications
+  // instantly for whoever has the dashboard open.
+  React.useEffect(() => {
+    const channel = supabase
+      .channel("topbar-notifications-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => loadNotifications())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadNotifications]);
 
   const count = notifications.length;
 
-  const goToBookings = () => {
+  const goToBookings = (n: NotificationItem) => {
     setNotifOpen(false);
-    navigate("/bookings");
+    navigate(n.type === "online_booking" ? "/online-bookings" : "/bookings");
   };
 
   return (
@@ -231,7 +311,7 @@ export function Topbar() {
                           <motion.button
                             key={n.id}
                             variants={staggerItem}
-                            onClick={goToBookings}
+                            onClick={() => goToBookings(n)}
                             className="flex w-full items-start gap-3 border-b border-slate-50 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50 dark:border-slate-700/60 dark:hover:bg-slate-700/50"
                           >
                             <div
@@ -239,12 +319,14 @@ export function Topbar() {
                                 "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
                                 n.type === "checkin" && "bg-green-50 text-green-600 dark:bg-green-500/15 dark:text-green-400",
                                 n.type === "checkout" && "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
-                                n.type === "payment_due" && "bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"
+                                n.type === "payment_due" && "bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400",
+                                n.type === "online_booking" && "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
                               )}
                             >
                               {n.type === "checkin" && <LogIn className="h-4 w-4" />}
                               {n.type === "checkout" && <LogOut className="h-4 w-4" />}
                               {n.type === "payment_due" && <Wallet className="h-4 w-4" />}
+                              {n.type === "online_booking" && <Globe className="h-4 w-4" />}
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{n.title}</p>

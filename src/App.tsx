@@ -7,6 +7,7 @@ import Login from "@/pages/Login";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const NewBooking = lazy(() => import("@/pages/NewBooking"));
 const Bookings = lazy(() => import("@/pages/Bookings"));
+const OnlineBookings = lazy(() => import("@/pages/OnlineBookings"));
 const Guests = lazy(() => import("@/pages/Guests"));
 const Rooms = lazy(() => import("@/pages/Rooms"));
 const Services = lazy(() => import("@/pages/Services"));
@@ -26,6 +27,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/bookings/new" element={<NewBooking />} />
           <Route path="/bookings" element={<Bookings />} />
+          <Route path="/online-bookings" element={<OnlineBookings />} />
           <Route path="/guests" element={<Guests />} />
           <Route path="/rooms" element={<Rooms />} />
           <Route path="/services" element={<Services />} />

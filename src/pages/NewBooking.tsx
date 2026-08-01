@@ -27,6 +27,7 @@ import {
   IdCard,
   ImagePlus,
   Loader2,
+  TrendingDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Input, Label, Textarea, Select, FieldError } from "@/components/ui/input";
@@ -34,8 +35,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useBookingPrice } from "@/hooks/useBookingPrice";
 import { bookingFormSchema, type BookingFormValues } from "@/lib/schemas";
-import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/constants";
+import { BOOKING_SOURCE_LABELS, PAYMENT_METHOD_LABELS, PRICING_METHOD_LABELS } from "@/lib/constants";
 import { formatCurrency, nightsBetween, todayISO, cn } from "@/lib/utils";
 import { paymentStatusTone } from "@/lib/badge-tones";
 import type { Guest, Room, Service } from "@/lib/database.types";
@@ -192,13 +194,17 @@ export default function NewBooking() {
     return () => clearTimeout(t);
   }, [phone]);
 
-  // Auto-fill price from selected room * nights (still editable)
+  // Auto-fill price from the shared calculate_booking_price() engine — daily
+  // rate × nights normally, or the room type's flat monthly apartment rate
+  // once the stay reaches the configured long-stay threshold (30 nights by
+  // default). This is the exact same pricing rule the guest website uses;
+  // the field stays editable below in case staff need to override it.
+  const { quote: priceQuote } = useBookingPrice(roomId, checkIn, checkOut);
   React.useEffect(() => {
-    const room = rooms.find((r) => r.id === roomId);
-    if (room && nights > 0) {
-      setValue("total_amount", room.price * nights);
+    if (priceQuote) {
+      setValue("total_amount", priceQuote.total_amount);
     }
-  }, [roomId, nights, rooms, setValue]);
+  }, [priceQuote, setValue]);
 
   // Room availability is calculated live from actual booking dates — a room
   // is only unavailable if another confirmed/checked-in booking overlaps the
@@ -852,7 +858,39 @@ export default function NewBooking() {
               <SummaryRow icon={CalendarCheck} label="Check-out" value={checkOut ? formatDateShort(checkOut) : "—"} />
               <SummaryRow icon={CalendarDays} label="Nights" value={String(nights)} />
 
+              {priceQuote && (
+                <SummaryRow
+                  icon={TrendingDown}
+                  label="Pricing Method"
+                  value={PRICING_METHOD_LABELS[priceQuote.pricing_method] ?? priceQuote.pricing_method}
+                />
+              )}
+
+              {priceQuote?.pricing_method === "monthly" && (
+                <div className="flex items-start gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700">
+                  <TrendingDown className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <span className="font-semibold">Long-Term Stay Rate Applied.</span> {nights} nights qualifies for the flat monthly
+                    apartment rate of {formatCurrency(priceQuote.monthly_rate ?? priceQuote.total_amount)} instead of the nightly rate.
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-1.5 border-t border-slate-100 pt-3">
+                {priceQuote && (
+                  <>
+                    <div className="flex items-center justify-between text-slate-400">
+                      <span>Daily Rate</span>
+                      <span>{formatCurrency(priceQuote.daily_rate)}/night</span>
+                    </div>
+                    {priceQuote.monthly_rate != null && (
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span>Monthly Apartment Rate</span>
+                        <span>{formatCurrency(priceQuote.monthly_rate)}</span>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Room Charge</span>
                   <span>{formatCurrency(totalAmount)}</span>
