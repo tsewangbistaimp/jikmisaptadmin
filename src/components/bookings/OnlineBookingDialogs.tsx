@@ -1,22 +1,122 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Pencil, TrendingDown, IdCard } from "lucide-react";
+import { CheckCircle2, XCircle, Pencil, TrendingDown, IdCard, RotateCw, Bell } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useBookingPrice } from "@/hooks/useBookingPrice";
-import { formatCurrency, formatDate, nightsBetween, todayISO, addDaysISO } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime, nightsBetween, todayISO, addDaysISO } from "@/lib/utils";
 import { BOOKING_SOURCE_LABELS, PRICING_METHOD_LABELS, REJECTION_REASON_PRESETS } from "@/lib/constants";
-import { bookingStatusTone, paymentStatusTone } from "@/lib/badge-tones";
-import type { BookingWithRelations, Room } from "@/lib/database.types";
+import { bookingStatusTone, paymentStatusTone, notificationStatusTone } from "@/lib/badge-tones";
+import { sendNotification, retryNotification, getLatestNotificationForBooking } from "@/lib/notifications/NotificationService";
+import type { BookingWithRelations, Room, NotificationLog } from "@/lib/database.types";
+
+/** Best-effort device string for the audit trail — a real client IP can only
+ *  be captured server-side (trusted proxy headers), so that field stays
+ *  optional/empty for now; this covers the "device" half of "Optional IP
+ *  Address, Optional Device" from the spec. */
+function deviceInfo() {
+  if (typeof navigator === "undefined") return null;
+  return navigator.userAgent.slice(0, 300);
+}
+
+/** Fires after approve/reject succeeds: looks up the notification_log row
+ *  that RPC just queued, attempts delivery through NotificationService, and
+ *  returns a toast-ready summary. Never throws — a failed send is an
+ *  expected, normal outcome (no provider is configured yet), not an error
+ *  in the approve/reject flow itself. */
+async function dispatchAndDescribe(bookingId: string): Promise<{ notification: NotificationLog | null; sent: boolean }> {
+  const notification = await getLatestNotificationForBooking(bookingId);
+  if (!notification) return { notification: null, sent: false };
+  const outcome = await sendNotification(notification);
+  return { notification: { ...notification, status: outcome.status }, sent: outcome.status === "sent" };
+}
+
+export function NotificationStatusBadge({ status }: { status: NotificationLog["status"] }) {
+  const label = status === "sent" ? "Notification Sent" : status === "failed" ? "Notification Failed" : status === "retrying" ? "Pending Retry" : "Notification Pending";
+  return (
+    <Badge tone={notificationStatusTone(status)} className="w-fit">
+      {label}
+    </Badge>
+  );
+}
 
 function Info({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
       <p className="font-medium text-slate-800 dark:text-slate-200">{value ?? "—"}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Notification history for one booking — every attempt, with a Retry
+// action on whatever's currently 'failed'. This is the "complete
+// notification history" view the spec asks for, scoped to the booking
+// being reviewed (the Notifications tab on the list page covers the
+// across-all-bookings view).
+// ---------------------------------------------------------------------------
+function NotificationHistorySection({ bookingId }: { bookingId: string }) {
+  const [rows, setRows] = React.useState<NotificationLog[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [retryingId, setRetryingId] = React.useState<string | null>(null);
+
+  const load = React.useCallback(async () => {
+    const { data } = await supabase
+      .from("notification_log")
+      .select("*")
+      .eq("booking_id", bookingId)
+      .order("created_at", { ascending: false });
+    setRows((data as NotificationLog[]) ?? []);
+    setLoading(false);
+  }, [bookingId]);
+
+  React.useEffect(() => {
+    setLoading(true);
+    load();
+  }, [load]);
+
+  const handleRetry = async (row: NotificationLog) => {
+    setRetryingId(row.id);
+    const outcome = await retryNotification(row);
+    setRetryingId(null);
+    if (outcome.status === "sent") {
+      toast.success("Notification delivered on retry.");
+    } else {
+      toast.warning(`Retry failed: ${outcome.failureReason ?? "delivery unsuccessful"}`);
+    }
+    load();
+  };
+
+  if (loading) return null;
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <Bell className="h-3.5 w-3.5" /> Notification History
+      </p>
+      {rows.map((row) => (
+        <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs dark:bg-slate-900">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <NotificationStatusBadge status={row.status} />
+              <span className="capitalize text-slate-500">{row.channel}</span>
+            </div>
+            <p className="mt-0.5 truncate text-slate-400">
+              {row.status === "sent" && row.sent_at ? `Sent ${formatDateTime(row.sent_at)}` : row.failure_reason ?? "Queued for delivery"}
+            </p>
+          </div>
+          {row.status === "failed" && (
+            <Button size="sm" variant="outline" onClick={() => handleRetry(row)} loading={retryingId === row.id}>
+              <RotateCw className="h-3.5 w-3.5" /> Retry
+            </Button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -86,18 +186,22 @@ export function OnlineBookingDetailDialog({
           <div className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:bg-red-500/10">
             <p className="text-xs font-semibold uppercase tracking-wide">Rejection Reason</p>
             <p className="mt-0.5">{booking.rejection_reason}</p>
+            {booking.rejected_by_name && <p className="mt-1 text-xs text-red-500">Rejected by {booking.rejected_by_name}</p>}
           </div>
         )}
 
         {booking.booking_status === "confirmed" && booking.approved_at && (
           <p className="flex items-center gap-1.5 text-xs text-emerald-600">
             <CheckCircle2 className="h-3.5 w-3.5" /> Approved {formatDate(booking.approved_at)}
+            {booking.approved_by_name && ` by ${booking.approved_by_name}`}
           </p>
         )}
 
         <p className="flex items-center gap-1 text-xs text-slate-400">
           <IdCard className="h-3 w-3" /> Guest-submitted request — no ID photo attached from the website.
         </p>
+
+        {booking.booking_status !== "pending_approval" && <NotificationHistorySection bookingId={booking.id} />}
 
         {isPending && (
           <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
@@ -141,13 +245,19 @@ export function ApproveBookingDialog({
   const confirm = async () => {
     setSaving(true);
     setError(null);
-    const { error: rpcError } = await supabase.rpc("approve_booking", { p_booking_id: booking.id });
-    setSaving(false);
+    const { error: rpcError } = await supabase.rpc("approve_booking", { p_booking_id: booking.id, p_device: deviceInfo() });
     if (rpcError) {
+      setSaving(false);
       setError(rpcError.message);
       return;
     }
-    toast.success(`Booking ${booking.booking_number} approved`);
+    const { sent } = await dispatchAndDescribe(booking.id);
+    setSaving(false);
+    if (sent) {
+      toast.success(`Booking successfully approved. Confirmation message sent to ${booking.guest?.full_name ?? "the guest"}.`);
+    } else {
+      toast.warning("Booking updated successfully. Notification delivery failed — retry from the booking's detail view.");
+    }
     onDone();
     onClose();
   };
@@ -210,13 +320,19 @@ export function RejectBookingDialog({
       return;
     }
     setSaving(true);
-    const { error: rpcError } = await supabase.rpc("reject_booking", { p_booking_id: booking.id, p_reason: reason });
-    setSaving(false);
+    const { error: rpcError } = await supabase.rpc("reject_booking", { p_booking_id: booking.id, p_reason: reason, p_device: deviceInfo() });
     if (rpcError) {
+      setSaving(false);
       setError(rpcError.message);
       return;
     }
-    toast.success(`Booking ${booking.booking_number} rejected`);
+    const { sent } = await dispatchAndDescribe(booking.id);
+    setSaving(false);
+    if (sent) {
+      toast.success(`Booking successfully rejected. Cancellation message sent to ${booking.guest?.full_name ?? "the guest"}.`);
+    } else {
+      toast.warning("Booking updated successfully. Notification delivery failed — retry from the booking's detail view.");
+    }
     onDone();
     onClose();
   };

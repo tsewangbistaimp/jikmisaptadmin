@@ -1,25 +1,29 @@
 import * as React from "react";
-import { Search, Eye, CheckCircle2, XCircle, Pencil, ArrowUpDown, Globe, TrendingDown } from "lucide-react";
+import { toast } from "sonner";
+import { Search, Eye, CheckCircle2, XCircle, Pencil, ArrowUpDown, Globe, TrendingDown, RotateCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { IconButton } from "@/components/ui/icon-button";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { bookingStatusTone } from "@/lib/badge-tones";
 import { PRICING_METHOD_LABELS } from "@/lib/constants";
-import { useOnlineBookings } from "@/hooks/useOnlineBookings";
-import type { BookingWithRelations } from "@/lib/database.types";
+import { useOnlineBookings, useNotificationLog } from "@/hooks/useOnlineBookings";
+import { retryNotification } from "@/lib/notifications/NotificationService";
+import type { BookingWithRelations, NotificationLog } from "@/lib/database.types";
 import {
   OnlineBookingDetailDialog,
   ApproveBookingDialog,
   RejectBookingDialog,
   ModifyBookingStayDialog,
+  NotificationStatusBadge,
 } from "@/components/bookings/OnlineBookingDialogs";
 
 const PAGE_SIZE = 10;
-type Tab = "pending_approval" | "confirmed" | "rejected" | "all";
+type Tab = "pending_approval" | "confirmed" | "rejected" | "all" | "notifications";
 type SortKey = "created_at" | "check_in" | "total_amount";
 
 const TABS: { value: Tab; label: string }[] = [
@@ -27,10 +31,12 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "confirmed", label: "Approved" },
   { value: "rejected", label: "Rejected" },
   { value: "all", label: "All" },
+  { value: "notifications", label: "Notifications" },
 ];
 
 export default function OnlineBookings() {
   const { bookings, loading, reload } = useOnlineBookings();
+  const { notifications, loading: notificationsLoading, reload: reloadNotifications } = useNotificationLog();
   const [tab, setTab] = React.useState<Tab>("pending_approval");
   const [query, setQuery] = React.useState("");
   const [sortKey, setSortKey] = React.useState<SortKey>("created_at");
@@ -45,6 +51,7 @@ export default function OnlineBookings() {
   const pendingCount = bookings.filter((b) => b.booking_status === "pending_approval").length;
 
   const filtered = React.useMemo(() => {
+    if (tab === "notifications") return [];
     let rows = bookings;
     if (tab !== "all") rows = rows.filter((b) => b.booking_status === tab);
     const q = query.trim().toLowerCase();
@@ -101,7 +108,12 @@ export default function OnlineBookings() {
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-1.5">
             {TABS.map((t) => {
-              const count = t.value === "all" ? bookings.length : bookings.filter((b) => b.booking_status === t.value).length;
+              const count =
+                t.value === "all"
+                  ? bookings.length
+                  : t.value === "notifications"
+                    ? notifications.filter((n) => n.status === "failed").length
+                    : bookings.filter((b) => b.booking_status === t.value).length;
               return (
                 <button
                   key={t.value}
@@ -138,6 +150,9 @@ export default function OnlineBookings() {
         </div>
       </Card>
 
+      {tab === "notifications" ? (
+        <NotificationsPanel notifications={notifications} loading={notificationsLoading} bookings={bookings} onReload={reloadNotifications} />
+      ) : (
       <Card className="overflow-hidden">
         {loading ? (
           <PageLoader />
@@ -297,6 +312,7 @@ export default function OnlineBookings() {
           </>
         )}
       </Card>
+      )}
 
       <OnlineBookingDetailDialog
         booking={viewing}
@@ -309,6 +325,78 @@ export default function OnlineBookings() {
       <RejectBookingDialog booking={rejecting} onClose={() => setRejecting(null)} onDone={reload} />
       <ModifyBookingStayDialog booking={modifying} onClose={() => setModifying(null)} onDone={reload} />
     </div>
+  );
+}
+
+/** Cross-booking notification history — the "Admins should also be able to
+ *  view complete notification history" requirement. Joins against the
+ *  already-loaded bookings list (has guest/room relations) purely
+ *  client-side to avoid a second round-trip query. */
+function NotificationsPanel({
+  notifications,
+  loading,
+  bookings,
+  onReload,
+}: {
+  notifications: NotificationLog[];
+  loading: boolean;
+  bookings: BookingWithRelations[];
+  onReload: () => void;
+}) {
+  const [retryingId, setRetryingId] = React.useState<string | null>(null);
+  const bookingById = React.useMemo(() => new Map(bookings.map((b) => [b.id, b])), [bookings]);
+
+  const handleRetry = async (row: NotificationLog) => {
+    setRetryingId(row.id);
+    const outcome = await retryNotification(row);
+    setRetryingId(null);
+    if (outcome.status === "sent") {
+      toast.success("Notification delivered on retry.");
+    } else {
+      toast.warning(`Retry failed: ${outcome.failureReason ?? "delivery unsuccessful"}`);
+    }
+    onReload();
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      {loading ? (
+        <PageLoader />
+      ) : notifications.length === 0 ? (
+        <EmptyState title="No notifications yet" description="Guest notifications queue up here as soon as a booking is approved or rejected." />
+      ) : (
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {notifications.map((n) => {
+            const booking = n.booking_id ? bookingById.get(n.booking_id) : undefined;
+            return (
+              <div key={n.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <NotificationStatusBadge status={n.status} />
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {booking?.booking_number ?? "—"}
+                    </span>
+                    <span className="text-xs capitalize text-slate-400">{n.channel}</span>
+                  </div>
+                  <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                    {booking?.guest?.full_name ?? "Guest"} · {n.recipient || "no contact on file"}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-slate-400">
+                    {n.status === "sent" && n.sent_at ? `Sent ${formatDateTime(n.sent_at)}` : n.failure_reason ?? `Queued ${formatDateTime(n.created_at)}`}
+                    {n.retry_count > 0 && ` · retried ${n.retry_count}×`}
+                  </p>
+                </div>
+                {n.status === "failed" && (
+                  <Button size="sm" variant="outline" onClick={() => handleRetry(n)} loading={retryingId === n.id} className="shrink-0">
+                    <RotateCw className="h-3.5 w-3.5" /> Retry
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
   );
 }
 

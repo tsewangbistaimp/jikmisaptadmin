@@ -28,6 +28,7 @@ export interface Guest {
   id: string;
   full_name: string;
   phone: string | null;
+  email: string | null;
   nationality: string | null;
   passport_number: string | null;
   guest_count: number;
@@ -69,8 +70,10 @@ export interface Booking {
   pricing_method: PricingMethod | null;
   approved_at: string | null;
   approved_by: string | null;
+  approved_by_name: string | null;
   rejected_at: string | null;
   rejected_by: string | null;
+  rejected_by_name: string | null;
   rejection_reason: string | null;
   notes: string | null;
   created_by: string | null;
@@ -154,6 +157,30 @@ export interface AuthCode {
   expires_at: string;
   used_at: string | null;
   used_by: string | null;
+  created_at: string;
+}
+
+export type NotificationChannel = "sms" | "whatsapp" | "email";
+export type NotificationTemplate = "booking_approved" | "booking_rejected";
+export type NotificationStatus = "pending" | "sent" | "failed" | "retrying";
+
+/** A row in the guest-notification outbox — written by approve_booking() /
+ *  reject_booking() (status starts 'pending'), then updated by the admin
+ *  dashboard's NotificationService once it has actually tried to send
+ *  through a provider (see src/lib/notifications/). */
+export interface NotificationLog {
+  id: string;
+  booking_id: string | null;
+  guest_id: string | null;
+  channel: NotificationChannel;
+  template: NotificationTemplate;
+  recipient: string | null;
+  provider: string | null;
+  message: string;
+  status: NotificationStatus;
+  failure_reason: string | null;
+  retry_count: number;
+  sent_at: string | null;
   created_at: string;
 }
 

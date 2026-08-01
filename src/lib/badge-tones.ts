@@ -1,4 +1,4 @@
-import type { BookingStatus, ExpensePriority, ExpenseStatus, PaymentStatus, RoomStatus } from "@/lib/database.types";
+import type { BookingStatus, ExpensePriority, ExpenseStatus, NotificationStatus, PaymentStatus, RoomStatus } from "@/lib/database.types";
 
 export function paymentStatusTone(status: PaymentStatus) {
   switch (status) {
@@ -45,6 +45,19 @@ export function expenseStatusTone(status: ExpenseStatus) {
       return "green" as const;
     default:
       return "amber" as const;
+  }
+}
+
+export function notificationStatusTone(status: NotificationStatus) {
+  switch (status) {
+    case "sent":
+      return "green" as const;
+    case "failed":
+      return "red" as const;
+    case "retrying":
+      return "amber" as const;
+    default:
+      return "slate" as const;
   }
 }
 

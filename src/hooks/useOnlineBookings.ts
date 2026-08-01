@@ -1,6 +1,6 @@
 import * as React from "react";
 import { supabase } from "@/lib/supabase";
-import type { BookingWithRelations } from "@/lib/database.types";
+import type { BookingWithRelations, NotificationLog } from "@/lib/database.types";
 
 /** All guest-website booking requests (booking_source = 'website'), across
  *  every status — the Online Booking Requests page filters/tabs client-side
@@ -81,4 +81,35 @@ export function usePendingOnlineBookingsCount() {
   }, [load, instanceId]);
 
   return count;
+}
+
+/** Full notification outbox, newest first — powers the Online Bookings
+ *  page's "Notifications" tab (the cross-booking "complete notification
+ *  history" view). Realtime-subscribed so an approve/reject/retry from
+ *  another tab or staff member shows up immediately. */
+export function useNotificationLog() {
+  const [notifications, setNotifications] = React.useState<NotificationLog[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const load = React.useCallback(async () => {
+    const { data } = await supabase.from("notification_log").select("*").order("created_at", { ascending: false }).limit(500);
+    setNotifications((data as NotificationLog[]) ?? []);
+    setLoading(false);
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  React.useEffect(() => {
+    const channel = supabase
+      .channel("notification-log-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "notification_log" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
+
+  return { notifications, loading, reload: load };
 }
