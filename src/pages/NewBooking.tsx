@@ -870,8 +870,8 @@ export default function NewBooking() {
                 <div className="flex items-start gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700">
                   <TrendingDown className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
-                    <span className="font-semibold">Long-Term Stay Rate Applied.</span> {nights} nights qualifies for the flat monthly
-                    apartment rate of {formatCurrency(priceQuote.monthly_rate ?? priceQuote.total_amount)} instead of the nightly rate.
+                    <span className="font-semibold">Long-Term Apartment Pricing Applied.</span> {nights} nights at the prorated
+                    long-term rate of {formatCurrency(priceQuote.long_term_daily_rate ?? 0)}/night (monthly rate ÷ 30).
                   </span>
                 </div>
               )}
@@ -887,6 +887,12 @@ export default function NewBooking() {
                       <div className="flex items-center justify-between text-slate-400">
                         <span>Monthly Apartment Rate</span>
                         <span>{formatCurrency(priceQuote.monthly_rate)}</span>
+                      </div>
+                    )}
+                    {priceQuote.long_term_daily_rate != null && (
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span>Long-Term Daily Rate</span>
+                        <span>{formatCurrency(priceQuote.long_term_daily_rate)}/night</span>
                       </div>
                     )}
                   </>

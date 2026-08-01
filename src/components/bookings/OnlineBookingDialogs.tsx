@@ -355,7 +355,8 @@ export function ModifyBookingStayDialog({
             </div>
             {quote.pricing_method === "monthly" && (
               <p className="flex items-center gap-1 text-xs text-emerald-600">
-                <TrendingDown className="h-3 w-3" /> Long-term stay rate applied automatically
+                <TrendingDown className="h-3 w-3" /> Long-term apartment pricing applied automatically
+                {quote.long_term_daily_rate != null && ` — ${formatCurrency(quote.long_term_daily_rate)}/night`}
               </p>
             )}
           </div>

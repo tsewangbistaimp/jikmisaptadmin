@@ -86,6 +86,10 @@ export interface BookingPriceQuote {
   pricing_method: PricingMethod;
   daily_rate: number;
   monthly_rate: number | null;
+  /** Monthly rate ÷ 30, rounded to 2 decimals — what's actually charged per
+   *  night once a stay hits the long-stay threshold. Prorated, not a flat
+   *  monthly fee, so a 45-night stay costs more than a 30-night one. */
+  long_term_daily_rate: number | null;
   total_amount: number;
 }
 
