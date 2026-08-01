@@ -127,13 +127,19 @@ export default function NewBooking() {
       .from("rooms")
       .select("*")
       .order("room_number")
-      .then(({ data }) => setRooms((data as Room[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load rooms: " + error.message);
+        setRooms((data as Room[]) ?? []);
+      });
     supabase
       .from("services")
       .select("*")
       .eq("status", "active")
       .order("name")
-      .then(({ data }) => setServices((data as Service[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load services: " + error.message);
+        setServices((data as Service[]) ?? []);
+      });
   }, []);
 
   const phone = watch("phone");
@@ -232,8 +238,12 @@ export default function NewBooking() {
       .in("booking_status", ["confirmed", "checked_in", "pending_approval"])
       .lt("check_in", checkOut)
       .gt("check_out", checkIn)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (cancelled) return;
+        // A failed query here must not silently show every room as free —
+        // that would let a receptionist double-book on top of an existing
+        // booking this check couldn't see.
+        if (error) toast.error("Couldn't verify room availability: " + error.message);
         const rows = (data ?? []) as { room_id: string; booking_status: string }[];
         setBookedRoomIds(new Set(rows.filter((b) => b.booking_status !== "pending_approval").map((b) => b.room_id)));
         setPendingRoomIds(new Set(rows.filter((b) => b.booking_status === "pending_approval").map((b) => b.room_id)));

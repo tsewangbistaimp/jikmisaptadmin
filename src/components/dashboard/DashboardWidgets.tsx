@@ -19,7 +19,6 @@ import {
   CartesianGrid,
 } from "recharts";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { AnimatedNumber, DelayedFadeIn } from "@/components/ui/animated-number";
 import { cn, formatCurrency } from "@/lib/utils";
 import { fadeUp, staggerContainer, staggerItem } from "@/lib/motion";

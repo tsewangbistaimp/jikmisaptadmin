@@ -184,7 +184,8 @@ function RoomDetailDialog({ room, onClose }: { room: Room | null; onClose: () =>
       .eq("room_id", room.id)
       .in("booking_status", ["confirmed", "checked_in"])
       .order("check_in")
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load this room's booking calendar: " + error.message);
         setBookings((data as { check_in: string; check_out: string }[]) ?? []);
         setLoading(false);
       });

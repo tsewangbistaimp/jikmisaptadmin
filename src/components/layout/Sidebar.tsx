@@ -21,7 +21,7 @@ import {
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePendingOnlineBookingsCount } from "@/hooks/useOnlineBookings";
-import { dropdownVariants, SPRING_SOFT, DURATION } from "@/lib/motion";
+import { dropdownVariants, SPRING_SOFT } from "@/lib/motion";
 
 interface NavItem {
   to: string;

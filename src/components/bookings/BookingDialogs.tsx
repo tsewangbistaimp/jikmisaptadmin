@@ -86,7 +86,10 @@ export function BookingDetailDialog({
       .select("*, staff:profiles(full_name)")
       .eq("booking_id", booking.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setTransactions((data as TransactionWithStaff[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load payment history: " + error.message);
+        setTransactions((data as TransactionWithStaff[]) ?? []);
+      });
   }, [booking]);
 
   React.useEffect(() => {
@@ -96,7 +99,10 @@ export function BookingDetailDialog({
       .from("booking_services")
       .select("*")
       .eq("booking_id", booking.id)
-      .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load add-ons: " + error.message);
+        setAddOns((data as BookingService[]) ?? []);
+      });
 
     loadIdPhoto(booking.guest?.id_document_path);
   }, [booking, reloadTransactions, loadIdPhoto]);
@@ -299,13 +305,19 @@ export function EditBookingDialog({
       .from("booking_services")
       .select("*")
       .eq("booking_id", booking.id)
-      .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load add-ons: " + error.message);
+        setAddOns((data as BookingService[]) ?? []);
+      });
     supabase
       .from("services")
       .select("*")
       .eq("status", "active")
       .order("name")
-      .then(({ data }) => setServices((data as Service[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load services: " + error.message);
+        setServices((data as Service[]) ?? []);
+      });
   }, [booking]);
 
   if (!booking) return null;
@@ -1033,17 +1045,26 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
 
   React.useEffect(() => {
     if (!booking) return;
+    // Both feed into the printed invoice total, so a failed fetch here isn't
+    // cosmetic — it could print a financial document that's missing add-ons
+    // or a refund deduction. Surface it instead of silently printing wrong.
     supabase
       .from("booking_services")
       .select("*")
       .eq("booking_id", booking.id)
-      .then(({ data }) => setAddOns((data as BookingService[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load add-ons for the invoice: " + error.message);
+        setAddOns((data as BookingService[]) ?? []);
+      });
     supabase
       .from("transactions")
       .select("amount")
       .eq("booking_id", booking.id)
       .eq("transaction_type", "refund")
-      .then(({ data }) => setRefundTotal((data ?? []).reduce((s, t) => s + Number(t.amount), 0)));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load refund total for the invoice: " + error.message);
+        setRefundTotal((data ?? []).reduce((s, t) => s + Number(t.amount), 0));
+      });
   }, [booking]);
 
   if (!booking) return null;

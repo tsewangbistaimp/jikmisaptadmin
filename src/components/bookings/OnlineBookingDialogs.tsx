@@ -437,7 +437,10 @@ export function ModifyBookingStayDialog({
       .from("rooms")
       .select("*")
       .order("room_number")
-      .then(({ data }) => setRooms((data as Room[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load rooms: " + error.message);
+        setRooms((data as Room[]) ?? []);
+      });
   }, [booking]);
 
   const nights = nightsBetween(checkIn, checkOut);

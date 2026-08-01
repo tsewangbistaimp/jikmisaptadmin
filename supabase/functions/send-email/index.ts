@@ -81,15 +81,24 @@ Deno.serve(async (req: Request) => {
       auth: { user: smtpUser, pass: smtpPass },
     });
 
-    await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to,
-      subject,
-      text: message,
-    });
+    try {
+      await transporter.sendMail({
+        from: `"${fromName}" <${fromEmail}>`,
+        to,
+        subject,
+        text: message,
+      });
+    } catch (smtpErr) {
+      // Logged (not just returned) so it shows up in the Supabase dashboard's
+      // Edge Functions -> send-email -> Logs tab — the Invocations tab only
+      // shows request metadata, not this response body's actual content.
+      console.error("send-email SMTP failure:", smtpErr);
+      return json({ error: `SMTP error: ${(smtpErr as Error).message ?? "unknown"}` }, 200);
+    }
 
     return json({ ok: true }, 200);
   } catch (err) {
+    console.error("send-email failure:", err);
     return json({ error: (err as Error).message ?? "Failed to send email" }, 200);
   }
 });

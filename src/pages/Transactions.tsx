@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Search } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
@@ -25,7 +26,8 @@ export default function Transactions() {
       .select("*, booking:bookings(id, booking_number), guest:guests(id, full_name)")
       .order("created_at", { ascending: false })
       .limit(1000)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load transactions: " + error.message);
         setTransactions((data as TransactionWithRelations[]) ?? []);
         setLoading(false);
       });

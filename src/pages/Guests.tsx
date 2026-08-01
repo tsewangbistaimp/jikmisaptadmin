@@ -189,7 +189,8 @@ function GuestProfileDialog({
       .select("*, room:rooms(*)")
       .eq("guest_id", guest.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load this guest's bookings: " + error.message);
         setBookings((data as (Booking & { room: Room })[]) ?? []);
         setLoading(false);
       });
@@ -198,7 +199,10 @@ function GuestProfileDialog({
       .select("*")
       .eq("guest_id", guest.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setTransactions((data as Transaction[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) toast.error("Couldn't load this guest's transactions: " + error.message);
+        setTransactions((data as Transaction[]) ?? []);
+      });
   }, [guest]);
 
   // Show the guest ID photo the receptionist captured during booking, the
@@ -461,12 +465,10 @@ function GuestEditDialog({
   });
 
   const [idPhotoUrl, setIdPhotoUrl] = React.useState<string | null>(null);
-  const [idPhotoPath, setIdPhotoPath] = React.useState<string | null>(null);
   const [idPhotoUploading, setIdPhotoUploading] = React.useState(false);
   const idFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const loadIdPhoto = React.useCallback((path: string | null | undefined) => {
-    setIdPhotoPath(path ?? null);
     if (!path) {
       setIdPhotoUrl(null);
       return;

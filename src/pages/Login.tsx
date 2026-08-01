@@ -12,7 +12,7 @@ export default function Login() {
   const { signIn, session } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation() as { state?: { disabled?: boolean } };
+  const location = useLocation() as { state?: { disabled?: boolean; noProfile?: boolean } };
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -132,6 +132,11 @@ export default function Login() {
             {location.state?.disabled && (
               <div className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
                 Your account has been disabled. Contact the administrator.
+              </div>
+            )}
+            {location.state?.noProfile && (
+              <div className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                We couldn't find a staff profile for this account. Contact the administrator.
               </div>
             )}
 
