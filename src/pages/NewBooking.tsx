@@ -96,6 +96,7 @@ export default function NewBooking() {
   const [matchingGuest, setMatchingGuest] = React.useState<Guest | null>(null);
   const [usingExistingGuest, setUsingExistingGuest] = React.useState(false);
   const [bookedRoomIds, setBookedRoomIds] = React.useState<Set<string>>(new Set());
+  const [pendingRoomIds, setPendingRoomIds] = React.useState<Set<string>>(new Set());
   const [checkingAvailability, setCheckingAvailability] = React.useState(false);
   const [idDocPath, setIdDocPath] = React.useState<string | null>(null);
   const [idDocPreviewUrl, setIdDocPreviewUrl] = React.useState<string | null>(null);
@@ -207,26 +208,35 @@ export default function NewBooking() {
   }, [priceQuote, setValue]);
 
   // Room availability is calculated live from actual booking dates — a room
-  // is only unavailable if another confirmed/checked-in booking overlaps the
-  // selected check-in/check-out range. We deliberately do NOT rely on a
-  // static "occupied" flag on the room, since that can get stuck and block
-  // future dates even after a guest has checked out.
+  // is unavailable if another confirmed/checked-in booking overlaps the
+  // selected check-in/check-out range, OR if a guest submitted an online
+  // booking request for the same room/dates that's still pending_approval.
+  // This mirrors the exact same rule the guest website enforces (see
+  // jikmis-website's create_public_booking() pending-approval guard) — a
+  // room reception can see as "free" must be the same room the website
+  // considers "free", otherwise staff could create a confirmed booking on
+  // top of a pending online request. We deliberately do NOT rely on a static
+  // "occupied" flag on the room, since that can get stuck and block future
+  // dates even after a guest has checked out.
   React.useEffect(() => {
     if (!checkIn || !checkOut || new Date(checkOut) <= new Date(checkIn)) {
       setBookedRoomIds(new Set());
+      setPendingRoomIds(new Set());
       return;
     }
     let cancelled = false;
     setCheckingAvailability(true);
     supabase
       .from("bookings")
-      .select("room_id")
-      .in("booking_status", ["confirmed", "checked_in"])
+      .select("room_id, booking_status")
+      .in("booking_status", ["confirmed", "checked_in", "pending_approval"])
       .lt("check_in", checkOut)
       .gt("check_out", checkIn)
       .then(({ data }) => {
         if (cancelled) return;
-        setBookedRoomIds(new Set((data ?? []).map((b: { room_id: string }) => b.room_id)));
+        const rows = (data ?? []) as { room_id: string; booking_status: string }[];
+        setBookedRoomIds(new Set(rows.filter((b) => b.booking_status !== "pending_approval").map((b) => b.room_id)));
+        setPendingRoomIds(new Set(rows.filter((b) => b.booking_status === "pending_approval").map((b) => b.room_id)));
         setCheckingAvailability(false);
       });
     return () => {
@@ -241,9 +251,12 @@ export default function NewBooking() {
     if (roomId && bookedRoomIds.has(roomId)) {
       setValue("room_id", "");
       toast.error("That room is no longer available for the selected dates — please choose another.");
+    } else if (roomId && pendingRoomIds.has(roomId)) {
+      setValue("room_id", "");
+      toast.error("That room has a pending online booking request for these dates — approve or reject it from Online Bookings first.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookedRoomIds]);
+  }, [bookedRoomIds, pendingRoomIds]);
 
   const applyExistingGuest = async () => {
     if (!matchingGuest) return;
@@ -295,19 +308,25 @@ export default function NewBooking() {
     }
 
     // Defense in depth: re-check availability right before submitting, in
-    // case another booking was created for this room/date range while this
-    // form was open. The database's exclusion constraint is the ultimate
-    // safety net (caught below), but this gives a faster, clearer error.
+    // case another booking (or a new online booking request) was created for
+    // this room/date range while this form was open. The database's
+    // exclusion constraint is the ultimate safety net (caught below), but
+    // this gives a faster, clearer error.
     const { data: conflicting } = await supabase
       .from("bookings")
-      .select("id")
+      .select("id, booking_status")
       .eq("room_id", values.room_id)
-      .in("booking_status", ["confirmed", "checked_in"])
+      .in("booking_status", ["confirmed", "checked_in", "pending_approval"])
       .lt("check_in", values.check_out)
       .gt("check_out", values.check_in)
       .limit(1);
     if (conflicting && conflicting.length > 0) {
-      toast.error("This room was just booked for an overlapping date range. Please pick another room or dates.");
+      const isPending = conflicting[0].booking_status === "pending_approval";
+      toast.error(
+        isPending
+          ? "This room now has a pending online booking request for an overlapping date range. Approve or reject it from Online Bookings first."
+          : "This room was just booked for an overlapping date range. Please pick another room or dates."
+      );
       return;
     }
 
@@ -582,11 +601,18 @@ export default function NewBooking() {
                   {rooms.map((r) => {
                     const isMaintenance = r.status === "maintenance";
                     const isBooked = bookedRoomIds.has(r.id);
-                    const unavailable = isMaintenance || isBooked;
+                    const isPending = pendingRoomIds.has(r.id);
+                    const unavailable = isMaintenance || isBooked || isPending;
                     return (
                       <option key={r.id} value={r.id} disabled={unavailable}>
                         {r.room_number} · {r.room_type} · {formatCurrency(r.price)}/night
-                        {isMaintenance ? " (under maintenance)" : isBooked ? " (booked for these dates)" : ""}
+                        {isMaintenance
+                          ? " (under maintenance)"
+                          : isBooked
+                            ? " (booked for these dates)"
+                            : isPending
+                              ? " (pending online request)"
+                              : ""}
                       </option>
                     );
                   })}
