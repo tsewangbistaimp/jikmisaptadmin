@@ -36,6 +36,7 @@ import {
   ExpenseCategoryDonut,
 } from "@/components/dashboard/DashboardWidgets";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
+import { useChartExport, ChartToolbarButtons, ChartFullscreenDialog } from "@/components/ui/chart-card";
 import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
 import type { Room } from "@/lib/database.types";
 
@@ -81,6 +82,8 @@ export default function Dashboard() {
   const [totalBookingsAllTime, setTotalBookingsAllTime] = React.useState(0);
   const [pendingBalance, setPendingBalance] = React.useState(0);
   const [granularity, setGranularity] = React.useState<Granularity>("daily");
+  const reservationsChart = useChartExport("reservations-analytics");
+  const incomeVsExpenseChart = useChartExport("monthly-income-vs-expenses");
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -376,25 +379,37 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-5 lg:col-span-1">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Reservations Analytics</p>
-            <div className="flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5">
-              {(["daily", "weekly", "monthly"] as Granularity[]).map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGranularity(g)}
-                  className={cn(
-                    "rounded-md px-2 py-1 text-xs font-medium capitalize transition-colors",
-                    granularity === g ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                  )}
-                >
-                  {g}
-                </button>
-              ))}
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="shrink-0 text-sm font-semibold text-slate-800 dark:text-slate-200">Reservations Analytics</p>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5">
+                {(["daily", "weekly", "monthly"] as Granularity[]).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setGranularity(g)}
+                    className={cn(
+                      "rounded-md px-2 py-1 text-xs font-medium capitalize transition-colors",
+                      granularity === g ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+              <ChartToolbarButtons
+                onDownload={reservationsChart.download}
+                onFullscreen={() => reservationsChart.setFullscreen(true)}
+                downloading={reservationsChart.downloading}
+              />
             </div>
           </div>
-          <ReservationsChart data={reservationsSeries} />
+          <div ref={reservationsChart.ref}>
+            <ReservationsChart data={reservationsSeries} />
+          </div>
         </Card>
+        <ChartFullscreenDialog open={reservationsChart.fullscreen} onClose={() => reservationsChart.setFullscreen(false)} title="Reservations Analytics">
+          <ReservationsChart data={reservationsSeries} />
+        </ChartFullscreenDialog>
 
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
@@ -537,17 +552,29 @@ export default function Dashboard() {
               <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Monthly Income vs Expenses</p>
               <p className="text-xs text-slate-400 dark:text-slate-500">Last 6 months</p>
             </div>
-            <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Income
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Expenses
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Income
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Expenses
+                </span>
+              </div>
+              <ChartToolbarButtons
+                onDownload={incomeVsExpenseChart.download}
+                onFullscreen={() => incomeVsExpenseChart.setFullscreen(true)}
+                downloading={incomeVsExpenseChart.downloading}
+              />
             </div>
           </div>
-          <IncomeVsExpenseChart data={incomeVsExpenseSeries} height="h-72 sm:h-80" showLegend={false} />
+          <div ref={incomeVsExpenseChart.ref}>
+            <IncomeVsExpenseChart data={incomeVsExpenseSeries} height="h-72 sm:h-80" showLegend={false} />
+          </div>
         </Card>
+        <ChartFullscreenDialog open={incomeVsExpenseChart.fullscreen} onClose={() => incomeVsExpenseChart.setFullscreen(false)} title="Monthly Income vs Expenses">
+          <IncomeVsExpenseChart data={incomeVsExpenseSeries} height="h-full" showLegend={false} />
+        </ChartFullscreenDialog>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-5">

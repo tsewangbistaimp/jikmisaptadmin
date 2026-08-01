@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown, Wallet, Undo2 } from "lucide-react";
+import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown, Wallet, Undo2, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { IconButton } from "@/components/ui/icon-button";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { supabase } from "@/lib/supabase";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { bookingStatusTone, paymentStatusTone } from "@/lib/badge-tones";
 import { BOOKING_STATUS_LABELS } from "@/lib/constants";
 import type { BookingWithRelations } from "@/lib/database.types";
@@ -36,6 +36,7 @@ export default function Bookings() {
   const [sortKey, setSortKey] = React.useState<SortKey>("created_at");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [page, setPage] = React.useState(1);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
   const [viewing, setViewing] = React.useState<BookingWithRelations | null>(null);
   const [editing, setEditing] = React.useState<BookingWithRelations | null>(null);
@@ -100,9 +101,9 @@ export default function Bookings() {
     }
   };
 
-  const exportCsv = () => {
+  const downloadCsv = (rowsSource: BookingWithRelations[], filenamePrefix: string) => {
     const header = ["Booking ID", "Guest", "Phone", "Room", "Check-in", "Check-out", "Total", "Paid", "Balance", "Status"];
-    const rows = filtered.map((b) => [
+    const rows = rowsSource.map((b) => [
       b.booking_number,
       b.guest?.full_name ?? "",
       b.guest?.phone ?? "",
@@ -119,10 +120,41 @@ export default function Bookings() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const exportCsv = () => downloadCsv(filtered, "bookings");
+  const exportSelectedCsv = () => {
+    const rows = bookings.filter((b) => selectedIds.has(b.id));
+    downloadCsv(rows, "bookings-selected");
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allOnPageSelected = paginated.length > 0 && paginated.every((b) => selectedIds.has(b.id));
+
+  const toggleSelectPage = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginated.forEach((b) => next.delete(b.id));
+      } else {
+        paginated.forEach((b) => next.add(b.id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   return (
     <div className="space-y-5">
@@ -165,6 +197,20 @@ export default function Bookings() {
         </div>
       </Card>
 
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-navy-200 bg-navy-50 px-4 py-3 text-sm dark:border-navy-500/30 dark:bg-navy-500/10">
+          <span className="font-medium text-navy-800 dark:text-navy-100">{selectedIds.size} selected</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={exportSelectedCsv}>
+              <Download className="h-3.5 w-3.5" /> Export Selected
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="h-3.5 w-3.5" /> Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         {loading ? (
           <PageLoader />
@@ -187,6 +233,15 @@ export default function Bookings() {
               <Table>
                 <THead>
                   <TR>
+                    <TH className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={allOnPageSelected}
+                        onChange={toggleSelectPage}
+                        aria-label="Select all bookings on this page"
+                        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800"
+                      />
+                    </TH>
                     <TH>Booking ID</TH>
                     <TH>Guest</TH>
                     <TH>Phone</TH>
@@ -202,7 +257,16 @@ export default function Bookings() {
                 </THead>
                 <TBody>
                   {paginated.map((b) => (
-                    <TR key={b.id}>
+                    <TR key={b.id} className={selectedIds.has(b.id) ? "bg-navy-50/60 dark:bg-navy-500/10" : undefined}>
+                      <TD>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(b.id)}
+                          onChange={() => toggleSelectOne(b.id)}
+                          aria-label={`Select booking ${b.booking_number}`}
+                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800"
+                        />
+                      </TD>
                       <TD className="font-medium text-slate-900 dark:text-slate-100">{b.booking_number}</TD>
                       <TD>{b.guest?.full_name}</TD>
                       <TD>{b.guest?.phone}</TD>
@@ -262,12 +326,21 @@ export default function Bookings() {
             {/* Mobile: stacked cards, no horizontal scroll */}
             <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
               {paginated.map((b) => (
-                <div key={b.id} className="p-4">
+                <div key={b.id} className={cn("p-4", selectedIds.has(b.id) && "bg-navy-50/60 dark:bg-navy-500/10")}>
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900 dark:text-slate-100">{b.booking_number}</p>
-                      <p className="truncate text-sm text-slate-600 dark:text-slate-400">{b.guest?.full_name}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">{b.guest?.phone}</p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(b.id)}
+                        onChange={() => toggleSelectOne(b.id)}
+                        aria-label={`Select booking ${b.booking_number}`}
+                        className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{b.booking_number}</p>
+                        <p className="truncate text-sm text-slate-600 dark:text-slate-400">{b.guest?.full_name}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{b.guest?.phone}</p>
+                      </div>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <Badge tone={bookingStatusTone(b.booking_status)} className="w-fit capitalize">
