@@ -43,9 +43,19 @@ export function useOnlineBookings() {
 }
 
 /** Lightweight count-only version for the sidebar badge / topbar alert —
- *  avoids fetching full booking rows just to show a number. */
+ *  avoids fetching full booking rows just to show a number.
+ *
+ *  Both the desktop Sidebar and the mobile bottom-nav "More" sheet call this
+ *  at the same time (both are always mounted, just hidden/shown per
+ *  breakpoint with CSS) — a hardcoded channel name here would mean the
+ *  second caller tries to attach a postgres_changes listener to a channel
+ *  the first caller already subscribed, which supabase-js throws on
+ *  ("cannot add postgres_changes callbacks ... after subscribe()"), crashing
+ *  the whole app. useId() gives every hook instance its own channel name so
+ *  they don't collide, at the cost of one extra realtime subscription. */
 export function usePendingOnlineBookingsCount() {
   const [count, setCount] = React.useState(0);
+  const instanceId = React.useId();
 
   const load = React.useCallback(async () => {
     const { count: c } = await supabase
@@ -62,13 +72,13 @@ export function usePendingOnlineBookingsCount() {
 
   React.useEffect(() => {
     const channel = supabase
-      .channel("online-bookings-pending-count")
+      .channel(`online-bookings-pending-count-${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [load]);
+  }, [load, instanceId]);
 
   return count;
 }
