@@ -187,7 +187,13 @@ alter table public.bookings add constraint bookings_booking_status_check
 -- ----------------------------------------------------------------------------
 -- 4. create_public_booking — now prices via the shared engine and lands as
 --    'pending_approval' instead of auto-confirming.
+--
+-- The RETURNS TABLE shape is changing (adding pricing_method), and Postgres
+-- won't let CREATE OR REPLACE change a function's output columns — it has to
+-- be dropped first.
 -- ----------------------------------------------------------------------------
+drop function if exists public.create_public_booking(uuid, date, date, int, text, text, text, text, text);
+
 create or replace function public.create_public_booking(
   p_room_id uuid,
   p_check_in date,
