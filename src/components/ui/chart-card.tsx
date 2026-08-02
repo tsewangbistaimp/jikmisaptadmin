@@ -24,7 +24,9 @@ export function useChartExport(filename: string) {
     if (!ref.current || downloading) return;
     setDownloading(true);
     try {
-      const { default: html2canvas } = await import("html2canvas");
+      // html2canvas-pro, not plain html2canvas — the latter can't parse the
+      // oklch() colors Tailwind v4's default palette compiles to.
+      const { default: html2canvas } = await import("html2canvas-pro");
       const isDark = document.documentElement.classList.contains("dark");
       const canvas = await html2canvas(ref.current, { backgroundColor: isDark ? "#0f172a" : "#ffffff", scale: 2 });
       const link = document.createElement("a");
@@ -124,7 +126,9 @@ export function ChartCard({
     if (!captureRef.current || downloading) return;
     setDownloading(true);
     try {
-      const { default: html2canvas } = await import("html2canvas");
+      // html2canvas-pro, not plain html2canvas — the latter can't parse the
+      // oklch() colors Tailwind v4's default palette compiles to.
+      const { default: html2canvas } = await import("html2canvas-pro");
       const isDark = document.documentElement.classList.contains("dark");
       const canvas = await html2canvas(captureRef.current, {
         backgroundColor: isDark ? "#0f172a" : "#ffffff",

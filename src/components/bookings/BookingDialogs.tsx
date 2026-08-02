@@ -1042,6 +1042,7 @@ export function DeleteBookingDialog({
 export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelations | null; onClose: () => void }) {
   const [addOns, setAddOns] = React.useState<BookingService[]>([]);
   const [refundTotal, setRefundTotal] = React.useState(0);
+  const [downloadingInvoice, setDownloadingInvoice] = React.useState(false);
 
   React.useEffect(() => {
     if (!booking) return;
@@ -1082,13 +1083,23 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
 
   const downloadInvoicePng = async () => {
     const node = document.getElementById("invoice-print");
-    if (!node) return;
-    const { default: html2canvas } = await import("html2canvas");
-    const canvas = await html2canvas(node, { backgroundColor: "#ffffff", scale: 2 });
-    const link = document.createElement("a");
-    link.download = `invoice-${booking.booking_number}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    if (!node || downloadingInvoice) return;
+    setDownloadingInvoice(true);
+    try {
+      // html2canvas-pro (not plain html2canvas, which can't parse the
+      // oklch() colors Tailwind v4's default palette compiles to — that
+      // was silently crashing this download with no visible error).
+      const { default: html2canvas } = await import("html2canvas-pro");
+      const canvas = await html2canvas(node, { backgroundColor: "#ffffff", scale: 2 });
+      const link = document.createElement("a");
+      link.download = `invoice-${booking.booking_number}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (err) {
+      toast.error("Couldn't download the invoice: " + ((err as Error).message ?? "unknown error"));
+    } finally {
+      setDownloadingInvoice(false);
+    }
   };
 
   return (
@@ -1234,7 +1245,7 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button variant="outline" onClick={downloadInvoicePng}>
+        <Button variant="outline" onClick={downloadInvoicePng} loading={downloadingInvoice}>
           <Download className="h-4 w-4" /> Download PNG
         </Button>
         <Button onClick={() => window.print()}>
