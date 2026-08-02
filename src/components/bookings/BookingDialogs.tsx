@@ -1081,20 +1081,20 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
 
   const isPaidInFull = booking.remaining_balance <= 0;
 
-  const downloadInvoicePng = async () => {
-    const node = document.getElementById("invoice-print");
-    if (!node || downloadingInvoice) return;
+  const downloadInvoiceAsPdf = async () => {
+    if (downloadingInvoice) return;
     setDownloadingInvoice(true);
     try {
-      // html2canvas-pro (not plain html2canvas, which can't parse the
-      // oklch() colors Tailwind v4's default palette compiles to — that
-      // was silently crashing this download with no visible error).
-      const { default: html2canvas } = await import("html2canvas-pro");
-      const canvas = await html2canvas(node, { backgroundColor: "#ffffff", scale: 2 });
-      const link = document.createElement("a");
-      link.download = `invoice-${booking.booking_number}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      // Drawn directly with jsPDF (rects/lines/text/autoTable), NOT a
+      // screenshot of the on-screen invoice — that used html2canvas to
+      // rasterize the DOM, but this invoice is laid out with flexbox/grid
+      // throughout, and html2canvas-style libraries hand-roll CSS layout
+      // rather than using a real browser engine, so it collapsed the whole
+      // invoice into an unstyled stack of plain text with no colors, no
+      // borders, no table grid. A hand-drawn PDF can't have that failure
+      // mode since every element is placed at an exact coordinate.
+      const { downloadInvoicePdf } = await import("@/lib/export-invoice-pdf");
+      downloadInvoicePdf(booking, addOns, refundTotal);
     } catch (err) {
       toast.error("Couldn't download the invoice: " + ((err as Error).message ?? "unknown error"));
     } finally {
@@ -1245,8 +1245,8 @@ export function InvoiceDialog({ booking, onClose }: { booking: BookingWithRelati
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button variant="outline" onClick={downloadInvoicePng} loading={downloadingInvoice}>
-          <Download className="h-4 w-4" /> Download PNG
+        <Button variant="outline" onClick={downloadInvoiceAsPdf} loading={downloadingInvoice}>
+          <Download className="h-4 w-4" /> Download PDF
         </Button>
         <Button onClick={() => window.print()}>
           <Printer className="h-4 w-4" /> Print

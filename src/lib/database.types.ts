@@ -161,7 +161,7 @@ export interface AuthCode {
 }
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
-export type NotificationTemplate = "booking_approved" | "booking_rejected";
+export type NotificationTemplate = "booking_approved" | "booking_rejected" | "new_booking_alert";
 export type NotificationStatus = "pending" | "sent" | "failed" | "retrying";
 
 /** A row in the guest-notification outbox — written by approve_booking() /
