@@ -840,12 +840,13 @@ export function PaymentReviewDialog({
           <Button variant="outline" size="sm" onClick={requestNew} loading={saving === "request"}>
             <RefreshCcw className="h-3.5 w-3.5" /> Request New Screenshot
           </Button>
-          <Button variant="destructive" size="sm" onClick={reject} loading={saving === "reject"}>
+       <Button variant="destructive" size="sm" onClick={reject} loading={saving === "reject"}>
             <XCircle className="h-3.5 w-3.5" /> Reject Payment
           </Button>
-        
+          <Button size="sm" onClick={approve} loading={saving === "approve"}>
             <CheckCircle2 className="h-3.5 w-3.5" /> Approve Payment
           </Button>
+        
         </div>
       </div>
     </Dialog>
