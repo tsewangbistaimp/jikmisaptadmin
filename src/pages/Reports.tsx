@@ -22,6 +22,7 @@ import {
   Landmark,
   Banknote,
   CreditCard,
+  Building2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
@@ -34,6 +35,7 @@ import { StatCard, RevenueBarChart, ExpenseTrendChart, IncomeVsExpenseChart, Exp
 import { ProfitTrendChart, TrendLineChart, DateRangeFilterBar, AdvancedFiltersBar, GranularityToggle } from "@/components/reports/ReportWidgets";
 import { FinancialCalendar } from "@/components/reports/FinancialCalendar";
 import { DayDetailDialog } from "@/components/reports/DayDetailDialog";
+import RoomRevenueReport from "@/components/reports/RoomRevenueReport";
 import { cn, formatCurrency, formatDateTime, formatDate, todayISO } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS, EXPENSE_PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import { sumByDay, sumByWeek, sumByMonth, sumByYear, monthOverMonthChange } from "@/lib/dashboard-helpers";
@@ -67,6 +69,8 @@ interface ReportBooking {
   total_amount: number;
   remaining_balance: number;
   created_at: string;
+  payment_status: string;
+  guest: { full_name: string } | null;
 }
 
 interface ReportTransaction {
@@ -90,7 +94,7 @@ interface ReportExpense {
 }
 
 type PLGranularity = "daily" | "weekly" | "monthly" | "yearly";
-type Tab = "overview" | "analytics" | "calendar" | "ledger" | "closing";
+type Tab = "overview" | "analytics" | "roomRevenue" | "calendar" | "ledger" | "closing";
 
 const PL_WINDOW: Record<PLGranularity, number> = { daily: 30, weekly: 12, monthly: 12, yearly: 5 };
 
@@ -128,7 +132,7 @@ export default function Reports() {
       supabase.from("rooms").select("*"),
       supabase
         .from("bookings")
-        .select("id, room_id, guest_id, check_in, check_out, booking_status, total_amount, remaining_balance, created_at")
+        .select("id, room_id, guest_id, check_in, check_out, booking_status, total_amount, remaining_balance, created_at, payment_status, guest:guests(full_name)")
         .order("created_at", { ascending: true })
         .limit(10000),
       supabase
@@ -679,6 +683,7 @@ export default function Reports() {
         <div className="flex w-max gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
           <TabButton active={tab === "overview"} onClick={() => setTab("overview")} icon={<LayoutGrid className="h-4 w-4" />} label="Overview" />
           <TabButton active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<LineChartIcon className="h-4 w-4" />} label="Analytics" />
+          <TabButton active={tab === "roomRevenue"} onClick={() => setTab("roomRevenue")} icon={<Building2 className="h-4 w-4" />} label="Room Revenue" />
           <TabButton active={tab === "calendar"} onClick={() => setTab("calendar")} icon={<CalendarDays className="h-4 w-4" />} label="Calendar" />
           <TabButton active={tab === "ledger"} onClick={() => setTab("ledger")} icon={<ListTree className="h-4 w-4" />} label="Ledger" />
           <TabButton active={tab === "closing"} onClick={() => setTab("closing")} icon={<CalendarCheck className="h-4 w-4" />} label="Daily Closing" />
@@ -840,6 +845,8 @@ export default function Reports() {
           </Card>
         </div>
       )}
+
+      {tab === "roomRevenue" && <RoomRevenueReport bookings={bookings} rooms={rooms} />}
 
       {tab === "calendar" && (
         <Card className="p-5 sm:p-6">
