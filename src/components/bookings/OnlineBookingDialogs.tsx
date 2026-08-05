@@ -780,7 +780,7 @@ export function PaymentReviewDialog({
         </div>
 
         <div>
-          <Label>Payment Screenshot</Label>
+          <Label>Payment Screenshot (optional)</Label>
           {screenshotUrl ? (
             <a
               href={screenshotUrl}
@@ -843,7 +843,7 @@ export function PaymentReviewDialog({
           <Button variant="destructive" size="sm" onClick={reject} loading={saving === "reject"}>
             <XCircle className="h-3.5 w-3.5" /> Reject Payment
           </Button>
-          <Button size="sm" onClick={approve} loading={saving === "approve"} disabled={!screenshotUrl}>
+        
             <CheckCircle2 className="h-3.5 w-3.5" /> Approve Payment
           </Button>
         </div>
