@@ -9,7 +9,15 @@ export type RoomStatus = "available" | "occupied" | "cleaning" | "maintenance";
 export type BookingSource = "walk_in" | "phone" | "whatsapp" | "website" | "booking_com" | "airbnb";
 export type PaymentMethod = "cash" | "esewa" | "khalti" | "bank_transfer";
 export type PaymentStatus = "paid" | "partial" | "unpaid";
-export type BookingStatus = "pending_approval" | "confirmed" | "checked_in" | "checked_out" | "cancelled" | "rejected";
+export type BookingStatus =
+  | "pending_approval"
+  | "payment_under_review"
+  | "confirmed"
+  | "checked_in"
+  | "checked_out"
+  | "cancelled"
+  | "rejected"
+  | "expired";
 export type TransactionType = "advance" | "partial" | "final" | "refund";
 export type PricingMethod = "daily" | "monthly";
 
@@ -79,6 +87,26 @@ export interface Booking {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Set once, at creation, by create_public_booking() — see
+   *  20260803000000_verification_and_payment_review.sql. Always true for
+   *  every website booking (the DB refuses to create one otherwise); always
+   *  false for staff-created bookings (walk-in/phone/admin), which never go
+   *  through this gate at all. */
+  email_verified: boolean;
+  /** Always false for now — no SMS/OTP provider is configured yet. Shown
+   *  honestly as "not verified" rather than faked; wiring up real phone
+   *  verification later just means setting this true from a new
+   *  verify-phone-otp edge function, no schema change needed. */
+  phone_verified: boolean;
+  verified_at: string | null;
+  /** Path in the private 'payment-screenshots' storage bucket — staff
+   *  upload the guest's WhatsApp-sent screenshot here when reviewing a
+   *  payment_under_review booking. Use supabase.storage.from('payment-screenshots').createSignedUrl(). */
+  payment_screenshot_path: string | null;
+  payment_verified_at: string | null;
+  payment_verified_by: string | null;
+  payment_verified_by_name: string | null;
+  admin_notes: string | null;
 }
 
 /** Return shape of the shared public.calculate_booking_price() RPC — the
@@ -161,7 +189,12 @@ export interface AuthCode {
 }
 
 export type NotificationChannel = "sms" | "whatsapp" | "email";
-export type NotificationTemplate = "booking_approved" | "booking_rejected" | "new_booking_alert";
+export type NotificationTemplate =
+  | "booking_approved"
+  | "booking_rejected"
+  | "new_booking_alert"
+  | "pending_confirmation"
+  | "payment_screenshot_requested";
 export type NotificationStatus = "pending" | "sent" | "failed" | "retrying";
 
 /** A row in the guest-notification outbox — written by approve_booking() /

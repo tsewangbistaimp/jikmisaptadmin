@@ -15,11 +15,15 @@ export function bookingStatusTone(status: BookingStatus) {
   switch (status) {
     case "pending_approval":
       return "amber" as const;
+    case "payment_under_review":
+      return "amber" as const;
     case "confirmed":
       return "blue" as const;
     case "checked_in":
       return "green" as const;
     case "checked_out":
+      return "slate" as const;
+    case "expired":
       return "slate" as const;
     default:
       return "red" as const;

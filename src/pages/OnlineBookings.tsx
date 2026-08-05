@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Search, Eye, CheckCircle2, XCircle, Pencil, ArrowUpDown, Globe, TrendingDown, RotateCw } from "lucide-react";
+import { Search, Eye, CheckCircle2, XCircle, Pencil, ArrowUpDown, Globe, TrendingDown, RotateCw, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
@@ -8,9 +8,10 @@ import { IconButton } from "@/components/ui/icon-button";
 import { EmptyState, PageLoader } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { bookingStatusTone } from "@/lib/badge-tones";
-import { PRICING_METHOD_LABELS } from "@/lib/constants";
+import { PRICING_METHOD_LABELS, BOOKING_STATUS_LABELS } from "@/lib/constants";
 import { useOnlineBookings, useNotificationLog } from "@/hooks/useOnlineBookings";
 import { retryNotification } from "@/lib/notifications/NotificationService";
 import type { BookingWithRelations, NotificationLog } from "@/lib/database.types";
@@ -19,15 +20,17 @@ import {
   ApproveBookingDialog,
   RejectBookingDialog,
   ModifyBookingStayDialog,
+  PaymentReviewDialog,
   NotificationStatusBadge,
 } from "@/components/bookings/OnlineBookingDialogs";
 
 const PAGE_SIZE = 10;
-type Tab = "pending_approval" | "confirmed" | "rejected" | "all" | "notifications";
+type Tab = "pending_approval" | "payment_under_review" | "confirmed" | "rejected" | "all" | "notifications";
 type SortKey = "created_at" | "check_in" | "total_amount";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "pending_approval", label: "Pending" },
+  { value: "payment_under_review", label: "Payment Review" },
   { value: "confirmed", label: "Approved" },
   { value: "rejected", label: "Rejected" },
   { value: "all", label: "All" },
@@ -47,8 +50,20 @@ export default function OnlineBookings() {
   const [approving, setApproving] = React.useState<BookingWithRelations | null>(null);
   const [rejecting, setRejecting] = React.useState<BookingWithRelations | null>(null);
   const [modifying, setModifying] = React.useState<BookingWithRelations | null>(null);
+  const [reviewingPayment, setReviewingPayment] = React.useState<BookingWithRelations | null>(null);
 
   const pendingCount = bookings.filter((b) => b.booking_status === "pending_approval").length;
+
+  // Opportunistic sweep — this project has no cron/scheduled-task
+  // infrastructure, so a website booking that's sat unpaid in
+  // pending_approval/payment_under_review past 24h only actually flips to
+  // 'expired' the next time someone loads this page. See
+  // expire_stale_payment_reviews() in the 20260803000000 migration.
+  React.useEffect(() => {
+    supabase.rpc("expire_stale_payment_reviews").then(({ data, error }) => {
+      if (!error && typeof data === "number" && data > 0) reload();
+    });
+  }, [reload]);
 
   const filtered = React.useMemo(() => {
     if (tab === "notifications") return [];
@@ -203,8 +218,8 @@ export default function OnlineBookings() {
                       </TD>
                       <TD className="font-medium text-slate-800 dark:text-slate-200">{formatCurrency(b.total_amount)}</TD>
                       <TD>
-                        <Badge tone={bookingStatusTone(b.booking_status)} className="w-fit capitalize">
-                          {b.booking_status.replace("_", " ")}
+                        <Badge tone={bookingStatusTone(b.booking_status)} className="w-fit">
+                          {BOOKING_STATUS_LABELS[b.booking_status] ?? b.booking_status}
                         </Badge>
                       </TD>
                       <TD>
@@ -225,6 +240,11 @@ export default function OnlineBookings() {
                               </IconButton>
                             </>
                           )}
+                          {b.booking_status === "payment_under_review" && (
+                            <IconButton title="Review Payment" onClick={() => setReviewingPayment(b)}>
+                              <Wallet className="h-4 w-4" />
+                            </IconButton>
+                          )}
                         </div>
                       </TD>
                     </TR>
@@ -242,8 +262,8 @@ export default function OnlineBookings() {
                       <p className="truncate text-sm text-slate-600 dark:text-slate-400">{b.guest?.full_name}</p>
                       <p className="text-xs text-slate-400">{b.guest?.phone}</p>
                     </div>
-                    <Badge tone={bookingStatusTone(b.booking_status)} className="w-fit shrink-0 capitalize">
-                      {b.booking_status.replace("_", " ")}
+                    <Badge tone={bookingStatusTone(b.booking_status)} className="w-fit shrink-0">
+                      {BOOKING_STATUS_LABELS[b.booking_status] ?? b.booking_status}
                     </Badge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
@@ -283,6 +303,11 @@ export default function OnlineBookings() {
                         </IconButton>
                       </>
                     )}
+                    {b.booking_status === "payment_under_review" && (
+                      <IconButton title="Review Payment" onClick={() => setReviewingPayment(b)}>
+                        <Wallet className="h-4 w-4" />
+                      </IconButton>
+                    )}
                   </div>
                 </div>
               ))}
@@ -320,10 +345,12 @@ export default function OnlineBookings() {
         onApprove={openFromDetail(setApproving)}
         onReject={openFromDetail(setRejecting)}
         onModify={openFromDetail(setModifying)}
+        onReviewPayment={openFromDetail(setReviewingPayment)}
       />
       <ApproveBookingDialog booking={approving} onClose={() => setApproving(null)} onDone={reload} />
       <RejectBookingDialog booking={rejecting} onClose={() => setRejecting(null)} onDone={reload} />
       <ModifyBookingStayDialog booking={modifying} onClose={() => setModifying(null)} onDone={reload} />
+      <PaymentReviewDialog booking={reviewingPayment} onClose={() => setReviewingPayment(null)} onDone={reload} />
     </div>
   );
 }

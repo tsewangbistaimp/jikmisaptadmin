@@ -58,11 +58,15 @@ export function usePendingOnlineBookingsCount() {
   const instanceId = React.useId();
 
   const load = React.useCallback(async () => {
+    // Counts both stages that need staff action: a fresh request awaiting
+    // its legitimacy review, and one already approved but awaiting advance-
+    // payment verification. Neither reserves a room yet, so both are
+    // genuinely "something for staff to do", same as the badge implies.
     const { count: c } = await supabase
       .from("bookings")
       .select("id", { count: "exact", head: true })
       .eq("booking_source", "website")
-      .eq("booking_status", "pending_approval");
+      .in("booking_status", ["pending_approval", "payment_under_review"]);
     setCount(c ?? 0);
   }, []);
 

@@ -1,6 +1,22 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Pencil, TrendingDown, IdCard, RotateCw, Bell } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Pencil,
+  TrendingDown,
+  IdCard,
+  RotateCw,
+  Bell,
+  Mail,
+  Phone as PhoneIcon,
+  ImagePlus,
+  ImageOff,
+  Wallet,
+  RefreshCcw,
+  StickyNote,
+  ShieldCheck,
+} from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,10 +24,10 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useBookingPrice } from "@/hooks/useBookingPrice";
 import { formatCurrency, formatDate, formatDateTime, nightsBetween, todayISO, addDaysISO } from "@/lib/utils";
-import { BOOKING_SOURCE_LABELS, PRICING_METHOD_LABELS, REJECTION_REASON_PRESETS } from "@/lib/constants";
+import { BOOKING_SOURCE_LABELS, PRICING_METHOD_LABELS, REJECTION_REASON_PRESETS, PAYMENT_METHOD_LABELS, BOOKING_STATUS_LABELS } from "@/lib/constants";
 import { bookingStatusTone, paymentStatusTone, notificationStatusTone } from "@/lib/badge-tones";
 import { sendNotification, retryNotification, getPendingNotificationsForBooking } from "@/lib/notifications/NotificationService";
-import type { BookingWithRelations, Room, NotificationLog } from "@/lib/database.types";
+import type { BookingWithRelations, Room, NotificationLog, PaymentMethod } from "@/lib/database.types";
 
 const GMAIL_SENDER = "jikmisdonkhang@gmail.com";
 
@@ -87,6 +103,31 @@ function Info({ label, value }: { label: string; value?: React.ReactNode }) {
     <div>
       <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
       <p className="font-medium text-slate-800 dark:text-slate-200">{value ?? "—"}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Verification status — Email Verified / Phone Verified / Verification Time.
+// phone_verified is always false today (no SMS/OTP provider configured
+// yet) and is shown honestly as "Not Verified" rather than hidden.
+// ---------------------------------------------------------------------------
+function VerificationStatus({ booking }: { booking: BookingWithRelations }) {
+  if (booking.booking_source !== "website") return null;
+  return (
+    <div className="space-y-2 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-900">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <ShieldCheck className="h-3.5 w-3.5" /> Verification Status
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={booking.email_verified ? "green" : "red"} className="flex items-center gap-1">
+          <Mail className="h-3 w-3" /> Email {booking.email_verified ? "Verified" : "Not Verified"}
+        </Badge>
+        <Badge tone={booking.phone_verified ? "green" : "slate"} className="flex items-center gap-1">
+          <PhoneIcon className="h-3 w-3" /> Phone {booking.phone_verified ? "Verified" : "Not Verified"}
+        </Badge>
+      </div>
+      {booking.verified_at && <p className="text-xs text-slate-400">Verified {formatDateTime(booking.verified_at)}</p>}
     </div>
   );
 }
@@ -169,22 +210,25 @@ export function OnlineBookingDetailDialog({
   onApprove,
   onReject,
   onModify,
+  onReviewPayment,
 }: {
   booking: BookingWithRelations | null;
   onClose: () => void;
   onApprove: (b: BookingWithRelations) => void;
   onReject: (b: BookingWithRelations) => void;
   onModify: (b: BookingWithRelations) => void;
+  onReviewPayment: (b: BookingWithRelations) => void;
 }) {
   if (!booking) return null;
   const isPending = booking.booking_status === "pending_approval";
+  const isPaymentReview = booking.booking_status === "payment_under_review";
 
   return (
     <Dialog open={!!booking} onClose={onClose} title={booking.booking_number} description="Online booking request" className="max-w-lg">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={bookingStatusTone(booking.booking_status)} className="capitalize">
-            {booking.booking_status.replace("_", " ")}
+          <Badge tone={bookingStatusTone(booking.booking_status)}>
+            {BOOKING_STATUS_LABELS[booking.booking_status] ?? booking.booking_status}
           </Badge>
           <Badge tone={paymentStatusTone(booking.payment_status)} className="capitalize">
             {booking.payment_status}
@@ -208,11 +252,36 @@ export function OnlineBookingDetailDialog({
           <Info label="Pricing Method" value={booking.pricing_method ? PRICING_METHOD_LABELS[booking.pricing_method] : "—"} />
           <Info label="Calculated Total" value={formatCurrency(booking.total_amount)} />
           <Info label="Payment Status" value={<span className="capitalize">{booking.payment_status}</span>} />
-          <Info label="Booking Status" value={<span className="capitalize">{booking.booking_status.replace("_", " ")}</span>} />
+          <Info label="Booking Status" value={BOOKING_STATUS_LABELS[booking.booking_status] ?? booking.booking_status} />
         </div>
 
         {booking.guest?.nationality && <Info label="Nationality" value={booking.guest.nationality} />}
         {booking.guest?.passport_number && <Info label="Passport / ID" value={booking.guest.passport_number} />}
+
+        <VerificationStatus booking={booking} />
+
+        {(booking.payment_verified_at || booking.payment_screenshot_path) && (
+          <div className="space-y-1.5 rounded-xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-500/10">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              <Wallet className="h-3.5 w-3.5" /> Payment Verification
+            </p>
+            {booking.payment_verified_at && (
+              <p className="text-xs text-emerald-700">
+                Verified {formatDateTime(booking.payment_verified_at)}
+                {booking.payment_verified_by_name && ` by ${booking.payment_verified_by_name}`}
+              </p>
+            )}
+          </div>
+        )}
+
+        {booking.admin_notes && (
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
+              <StickyNote className="h-3 w-3" /> Internal Notes
+            </p>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{booking.admin_notes}</p>
+          </div>
+        )}
 
         {booking.notes && (
           <div>
@@ -255,15 +324,25 @@ export function OnlineBookingDetailDialog({
             </Button>
           </div>
         )}
+
+        {isPaymentReview && (
+          <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <Button size="sm" onClick={() => onReviewPayment(booking)}>
+              <Wallet className="h-3.5 w-3.5" /> Review Payment
+            </Button>
+          </div>
+        )}
       </div>
     </Dialog>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Approve — flips status to 'confirmed'; the exclusion constraint (same one
-// reception bookings rely on) blocks the approval if another confirmed
-// booking already overlaps these dates.
+// Approve — legitimacy review only. Moves the request to
+// 'payment_under_review' (NOT 'confirmed' — the room stays unreserved until
+// staff verifies the 50% advance payment via Review Payment). No guest
+// notification is sent here: the guest already received the payment-
+// instructions email immediately at submission time.
 // ---------------------------------------------------------------------------
 export function ApproveBookingDialog({
   booking,
@@ -285,15 +364,12 @@ export function ApproveBookingDialog({
     setSaving(true);
     setError(null);
     const { error: rpcError } = await supabase.rpc("approve_booking", { p_booking_id: booking.id, p_device: deviceInfo() });
+    setSaving(false);
     if (rpcError) {
-      setSaving(false);
       setError(rpcError.message);
       return;
     }
-    const summary = await dispatchAndDescribe(booking.id);
-    setSaving(false);
-    const { kind, text } = describeDispatch(summary, "approved", booking.guest?.full_name ?? "the guest");
-    toast[kind](text);
+    toast.success("Booking approved — now awaiting advance payment verification.");
     onDone();
     onClose();
   };
@@ -305,7 +381,8 @@ export function ApproveBookingDialog({
           {booking.guest?.full_name} · Room {booking.room?.room_number} · {formatDate(booking.check_in)} → {formatDate(booking.check_out)}
         </p>
         <div className="rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700 dark:bg-emerald-500/10">
-          This will confirm the booking, notify the guest, and update room availability.
+          This approves the request and moves it to Payment Under Review. The room is only reserved once you verify the guest's
+          advance payment from the Payment Review screen.
         </div>
         <FieldError message={error ?? undefined} />
         <div className="flex justify-end gap-2 pt-2">
@@ -521,6 +598,253 @@ export function ModifyBookingStayDialog({
           </Button>
           <Button onClick={save} loading={saving}>
             Save Changes
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Payment Review — for bookings in 'payment_under_review'. Staff upload the
+// guest's WhatsApp-sent payment screenshot, pick the payment method, add
+// optional internal notes, then Approve Payment (reserves the room + sends
+// the confirmation email), Reject Payment (rejects the booking outright), or
+// Request New Screenshot (asks the guest to resend, stays in review).
+// ---------------------------------------------------------------------------
+export function PaymentReviewDialog({
+  booking,
+  onClose,
+  onDone,
+}: {
+  booking: BookingWithRelations | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [screenshotPath, setScreenshotPath] = React.useState<string | null>(null);
+  const [screenshotUrl, setScreenshotUrl] = React.useState<string | null>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>("bank_transfer");
+  const [notes, setNotes] = React.useState("");
+  const [rejectReason, setRejectReason] = React.useState("");
+  const [showRejectReason, setShowRejectReason] = React.useState(false);
+  const [saving, setSaving] = React.useState<"approve" | "reject" | "request" | "notes" | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setScreenshotPath(booking?.payment_screenshot_path ?? null);
+    setNotes(booking?.admin_notes ?? "");
+    setPaymentMethod("bank_transfer");
+    setRejectReason("");
+    setShowRejectReason(false);
+    setError(null);
+  }, [booking]);
+
+  React.useEffect(() => {
+    if (!screenshotPath) {
+      setScreenshotUrl(null);
+      return;
+    }
+    supabase.storage
+      .from("payment-screenshots")
+      .createSignedUrl(screenshotPath, 3600)
+      .then(({ data }) => setScreenshotUrl(data?.signedUrl ?? null));
+  }, [screenshotPath]);
+
+  if (!booking) return null;
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image must be smaller than 8MB");
+      return;
+    }
+    setUploading(true);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${booking.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("payment-screenshots").upload(path, file);
+    setUploading(false);
+    if (uploadError) {
+      toast.error(uploadError.message);
+      return;
+    }
+    setScreenshotPath(path);
+    toast.success("Screenshot uploaded");
+  };
+
+  const saveNotesOnly = async () => {
+    setSaving("notes");
+    setError(null);
+    const { error: rpcError } = await supabase.rpc("admin_update_booking_note", { p_booking_id: booking.id, p_note: notes || null });
+    setSaving(null);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    toast.success("Notes saved");
+    onDone();
+  };
+
+  const approve = async () => {
+    setSaving("approve");
+    setError(null);
+    const { error: rpcError } = await supabase.rpc("approve_payment", {
+      p_booking_id: booking.id,
+      p_payment_screenshot_path: screenshotPath,
+      p_payment_method: paymentMethod,
+      p_notes: notes || null,
+      p_device: deviceInfo(),
+    });
+    if (rpcError) {
+      setSaving(null);
+      setError(rpcError.message);
+      return;
+    }
+    const summary = await dispatchAndDescribe(booking.id);
+    setSaving(null);
+    const { kind, text } = describeDispatch(summary, "approved", booking.guest?.full_name ?? "the guest");
+    toast[kind](text);
+    onDone();
+    onClose();
+  };
+
+  const reject = async () => {
+    if (!rejectReason.trim() || rejectReason.trim().length < 2) {
+      setShowRejectReason(true);
+      setError("Enter a reason for rejecting this payment");
+      return;
+    }
+    setSaving("reject");
+    setError(null);
+    const { error: rpcError } = await supabase.rpc("reject_payment", {
+      p_booking_id: booking.id,
+      p_reason: rejectReason.trim(),
+      p_payment_screenshot_path: screenshotPath,
+      p_device: deviceInfo(),
+    });
+    if (rpcError) {
+      setSaving(null);
+      setError(rpcError.message);
+      return;
+    }
+    const summary = await dispatchAndDescribe(booking.id);
+    setSaving(null);
+    const { kind, text } = describeDispatch(summary, "rejected", booking.guest?.full_name ?? "the guest");
+    toast[kind](text);
+    onDone();
+    onClose();
+  };
+
+  const requestNew = async () => {
+    setSaving("request");
+    setError(null);
+    const { error: rpcError } = await supabase.rpc("request_new_payment_screenshot", {
+      p_booking_id: booking.id,
+      p_note: notes || null,
+      p_device: deviceInfo(),
+    });
+    if (rpcError) {
+      setSaving(null);
+      setError(rpcError.message);
+      return;
+    }
+    const summary = await dispatchAndDescribe(booking.id);
+    setSaving(null);
+    if (summary.email?.sent) {
+      toast.success("Guest notified to resend a payment screenshot.");
+    } else {
+      toast.warning("Saved — but the guest notification email failed to send. You can retry from Notifications.");
+    }
+    setScreenshotPath(null);
+    onDone();
+  };
+
+  const advance = Math.round(booking.total_amount * 0.5);
+
+  return (
+    <Dialog open={!!booking} onClose={onClose} title="Review Payment" description={booking.booking_number} className="max-w-lg">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          {booking.guest?.full_name} · Room {booking.room?.room_number} · Total {formatCurrency(booking.total_amount)}
+        </p>
+        <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-700 dark:bg-amber-500/10">
+          50% advance due: <span className="font-semibold">{formatCurrency(advance)}</span>. Guest sends the screenshot via
+          WhatsApp — upload it below once you've received it.
+        </div>
+
+        <div>
+          <Label>Payment Screenshot</Label>
+          {screenshotUrl ? (
+            <a
+              href={screenshotUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1.5 block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700"
+            >
+              <img src={screenshotUrl} alt="Payment screenshot" className="max-h-64 w-full bg-slate-50 object-contain dark:bg-slate-900" />
+            </a>
+          ) : (
+            <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-400 dark:border-slate-700">
+              <ImageOff className="h-4 w-4" /> No screenshot uploaded yet
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          <Button variant="outline" size="sm" className="mt-2" onClick={() => fileInputRef.current?.click()} loading={uploading}>
+            <ImagePlus className="h-3.5 w-3.5" /> {screenshotUrl ? "Replace Screenshot" : "Upload Screenshot"}
+          </Button>
+        </div>
+
+        <div>
+          <Label>Payment Method</Label>
+          <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
+            {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between">
+            <Label>Internal Notes</Label>
+            <Button variant="ghost" size="sm" onClick={saveNotesOnly} loading={saving === "notes"}>
+              <StickyNote className="h-3.5 w-3.5" /> Save Notes
+            </Button>
+          </div>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Visible to staff only" />
+        </div>
+
+        {showRejectReason && (
+          <div>
+            <Label>Rejection Reason</Label>
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={2}
+              placeholder="Why is this payment being rejected?"
+            />
+          </div>
+        )}
+
+        <FieldError message={error ?? undefined} />
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <Button variant="outline" size="sm" onClick={requestNew} loading={saving === "request"}>
+            <RefreshCcw className="h-3.5 w-3.5" /> Request New Screenshot
+          </Button>
+          <Button variant="destructive" size="sm" onClick={reject} loading={saving === "reject"}>
+            <XCircle className="h-3.5 w-3.5" /> Reject Payment
+          </Button>
+          <Button size="sm" onClick={approve} loading={saving === "approve"} disabled={!screenshotUrl}>
+            <CheckCircle2 className="h-3.5 w-3.5" /> Approve Payment
           </Button>
         </div>
       </div>

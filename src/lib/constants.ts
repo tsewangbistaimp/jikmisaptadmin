@@ -22,11 +22,13 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   pending_approval: "Pending Approval",
+  payment_under_review: "Payment Under Review",
   confirmed: "Confirmed",
   checked_in: "Checked In",
   checked_out: "Checked Out",
   cancelled: "Cancelled",
   rejected: "Rejected",
+  expired: "Expired",
 };
 
 export const PRICING_METHOD_LABELS: Record<string, string> = {
