@@ -13,8 +13,9 @@ import { StatCard, ExpenseCategoryDonut } from "@/components/dashboard/Dashboard
 import { DateRangeFilterBar, GranularityToggle, TrendLineChart } from "@/components/reports/ReportWidgets";
 import { cn, formatCurrency, formatDate, nightsBetween, todayISO, addDaysISO } from "@/lib/utils";
 import { getPresetRange, growthPct, type DateRangePreset } from "@/lib/report-helpers";
-import { paymentStatusTone } from "@/lib/badge-tones";
-import type { Room, PaymentStatus } from "@/lib/database.types";
+import { paymentStatusTone, bookingStatusTone } from "@/lib/badge-tones";
+import { BOOKING_STATUS_LABELS } from "@/lib/constants";
+import type { Room, PaymentStatus, BookingStatus } from "@/lib/database.types";
 
 // ---------------------------------------------------------------------------
 // Room Revenue Report — a new analytics tab on the existing Reports page.
@@ -27,8 +28,15 @@ import type { Room, PaymentStatus } from "@/lib/database.types";
 // "Completed and confirmed" bookings (per the spec) means booking_status in
 // confirmed / checked_in / checked_out — the same three statuses that ever
 // reserve a room (see the no_overlapping_room_bookings exclusion constraint
-// in the schema). Pending/rejected/cancelled/expired bookings never counted
-// as revenue anywhere else in this app either.
+// in the schema). Pending/rejected/expired bookings never count as revenue.
+//
+// A 'cancelled' booking counts too, but only its retained payment: when
+// staff cancel a booking early (see cancel_booking() in supabase/
+// migrations), total_amount is clipped down to whatever was actually
+// collected, so counting it here shows exactly the non-refundable revenue
+// that was kept, not the value of nights that were never used. A booking
+// cancelled with nothing ever collected nets to $0 and effectively drops
+// out either way.
 // ---------------------------------------------------------------------------
 
 export interface RoomRevenueBooking {
@@ -46,6 +54,15 @@ export interface RoomRevenueBooking {
 }
 
 const REVENUE_STATUSES = new Set(["confirmed", "checked_in", "checked_out"]);
+
+/** A cancelled booking counts toward revenue/occupancy stats only if it
+ *  retained payment (see the module comment above) — this is the gate used
+ *  everywhere below instead of a bare REVENUE_STATUSES.has() check. */
+function countsForRevenue(b: { booking_status: string; total_amount: number }): boolean {
+  if (REVENUE_STATUSES.has(b.booking_status)) return true;
+  return b.booking_status === "cancelled" && Number(b.total_amount) > 0;
+}
+
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PALETTE = ["#3d63f5", "#059669", "#d97706", "#e11d48", "#7c3aed", "#0891b2", "#65a30d", "#c026d3", "#475569", "#0284c7"];
 
@@ -69,7 +86,7 @@ function computeRoomStats(bookings: RoomRevenueBooking[], rooms: Room[], from: s
   const totalDays = daysInRange(from, to);
   return rooms.map((room) => {
     const roomBookings = bookings.filter(
-      (b) => b.room_id === room.id && REVENUE_STATUSES.has(b.booking_status) && b.check_in >= from && b.check_in <= to
+      (b) => b.room_id === room.id && countsForRevenue(b) && b.check_in >= from && b.check_in <= to
     );
     const bookingCount = roomBookings.length;
     const occupiedNights = roomBookings.reduce((s, b) => s + nightsBetween(b.check_in, b.check_out), 0);
@@ -97,7 +114,7 @@ function computeMonthlyMatrix(bookings: RoomRevenueBooking[], rooms: Room[], yea
     const months = new Array(12).fill(0) as number[];
     for (const b of bookings) {
       if (b.room_id !== room.id) continue;
-      if (!REVENUE_STATUSES.has(b.booking_status)) continue;
+      if (!countsForRevenue(b)) continue;
       const d = new Date(b.check_in + "T00:00:00");
       if (d.getFullYear() !== year) continue;
       months[d.getMonth()] += Number(b.total_amount);
@@ -119,7 +136,7 @@ function computeWeeklyRevenue(bookings: RoomRevenueBooking[], rooms: Room[], mon
     const weeks = new Array(5).fill(0) as number[];
     for (const b of bookings) {
       if (b.room_id !== room.id) continue;
-      if (!REVENUE_STATUSES.has(b.booking_status)) continue;
+      if (!countsForRevenue(b)) continue;
       const d = new Date(b.check_in + "T00:00:00");
       if (d.getFullYear() !== year || d.getMonth() !== month) continue;
       const weekIdx = Math.min(4, Math.floor((d.getDate() - 1) / 7));
@@ -138,8 +155,11 @@ interface DailyRow {
 
 function computeDailyRevenue(bookings: RoomRevenueBooking[], rooms: Room[], dateISO: string): DailyRow[] {
   return rooms.map((room) => {
-    const dayBookings = bookings.filter((b) => b.room_id === room.id && REVENUE_STATUSES.has(b.booking_status) && b.check_in === dateISO);
+    const dayBookings = bookings.filter((b) => b.room_id === room.id && countsForRevenue(b) && b.check_in === dateISO);
     const revenue = dayBookings.reduce((s, b) => s + Number(b.total_amount), 0);
+    // Deliberately still REVENUE_STATUSES only (not countsForRevenue) — a
+    // cancelled booking has freed the room, so it should never show as
+    // "occupied" here even though its retained payment still counts above.
     const occupied = bookings.some(
       (b) => b.room_id === room.id && REVENUE_STATUSES.has(b.booking_status) && b.check_in <= dateISO && b.check_out > dateISO
     );
@@ -209,7 +229,7 @@ export default function RoomRevenueReport({ bookings, rooms }: { bookings: RoomR
   const drillDownBookings = drillDownRoom
     ? bookings
         .filter(
-          (b) => b.room_id === drillDownRoom.id && REVENUE_STATUSES.has(b.booking_status) && b.check_in >= range.from && b.check_in <= range.to
+          (b) => b.room_id === drillDownRoom.id && countsForRevenue(b) && b.check_in >= range.from && b.check_in <= range.to
         )
         .sort((a, b) => (a.check_in < b.check_in ? 1 : -1))
     : [];
@@ -547,6 +567,7 @@ export default function RoomRevenueReport({ bookings, rooms }: { bookings: RoomR
                   <TH>Nights</TH>
                   <TH>Amount</TH>
                   <TH>Payment</TH>
+                  <TH>Status</TH>
                 </TR>
               </THead>
               <TBody>
@@ -560,6 +581,11 @@ export default function RoomRevenueReport({ bookings, rooms }: { bookings: RoomR
                     <TD>
                       <Badge tone={paymentStatusTone(b.payment_status as PaymentStatus)} className="capitalize">
                         {b.payment_status}
+                      </Badge>
+                    </TD>
+                    <TD>
+                      <Badge tone={bookingStatusTone(b.booking_status as BookingStatus)} className="capitalize">
+                        {BOOKING_STATUS_LABELS[b.booking_status] ?? b.booking_status}
                       </Badge>
                     </TD>
                   </TR>

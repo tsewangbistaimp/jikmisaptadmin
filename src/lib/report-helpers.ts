@@ -230,13 +230,27 @@ export function buildLedger(
 // ---------------------------------------------------------------------------
 
 /**
- * Count "room-nights" — one per room per night actually occupied — for
- * non-cancelled bookings, clipped to [from, to] inclusive. Used for Average
- * Daily Revenue (ADR = revenue in range ÷ room-nights in range), which is
- * only meaningful once you know how many nights were actually sold, not
- * just how many bookings touched the range.
+ * A cancelled booking still counts toward revenue/occupancy stats if it
+ * retained payment — cancel_booking() (see supabase/migrations) clips
+ * total_amount down to whatever was actually collected and kept as
+ * non-refundable revenue at cancellation time, so a booking cancelled with
+ * nothing ever collected naturally nets to zero either way; this just skips
+ * counting it as a "booking"/night at all in that case.
  */
-export function roomNightsInRange<T extends { check_in: string; check_out: string; booking_status: string }>(
+function countsTowardStats<T extends { booking_status: string; total_amount: number }>(b: T): boolean {
+  if (b.booking_status !== "cancelled") return true;
+  return Number(b.total_amount) > 0;
+}
+
+/**
+ * Count "room-nights" — one per room per night actually occupied — for
+ * resolved bookings (cancelled bookings only count if they retained
+ * payment - see countsTowardStats), clipped to [from, to] inclusive. Used
+ * for Average Daily Revenue (ADR = revenue in range ÷ room-nights in
+ * range), which is only meaningful once you know how many nights were
+ * actually sold, not just how many bookings touched the range.
+ */
+export function roomNightsInRange<T extends { check_in: string; check_out: string; booking_status: string; total_amount: number }>(
   bookings: T[],
   from: string,
   to: string
@@ -247,7 +261,7 @@ export function roomNightsInRange<T extends { check_in: string; check_out: strin
 
   let nights = 0;
   for (const b of bookings) {
-    if (b.booking_status === "cancelled") continue;
+    if (!countsTowardStats(b)) continue;
     const start = b.check_in > from ? b.check_in : from;
     const end = b.check_out < rangeEndISO ? b.check_out : rangeEndISO;
     if (end > start) nights += nightsBetween(start, end);
@@ -261,11 +275,13 @@ export interface RoomAggregate {
   revenue: number;
 }
 
-/** Group non-cancelled bookings by room, summing booking count and total_amount. */
+/** Group resolved bookings by room, summing booking count and total_amount
+ *  (cancelled bookings only count if they retained payment - see
+ *  countsTowardStats; total_amount is already clipped to what was kept). */
 export function aggregateByRoom<T extends { room_id: string; total_amount: number; booking_status: string }>(bookings: T[]): Map<string, RoomAggregate> {
   const map = new Map<string, RoomAggregate>();
   for (const b of bookings) {
-    if (b.booking_status === "cancelled") continue;
+    if (!countsTowardStats(b)) continue;
     const existing = map.get(b.room_id) ?? { roomId: b.room_id, bookingCount: 0, revenue: 0 };
     existing.bookingCount += 1;
     existing.revenue += Number(b.total_amount);
@@ -274,9 +290,11 @@ export function aggregateByRoom<T extends { room_id: string; total_amount: numbe
   return map;
 }
 
-/** Average nights-per-stay across non-cancelled bookings. Returns 0 if there are none. */
-export function averageStay<T extends { check_in: string; check_out: string; booking_status: string }>(bookings: T[]): number {
-  const active = bookings.filter((b) => b.booking_status !== "cancelled");
+/** Average nights-per-stay across resolved bookings (cancelled bookings only
+ *  count if they retained payment - see countsTowardStats). Returns 0 if
+ *  there are none. */
+export function averageStay<T extends { check_in: string; check_out: string; booking_status: string; total_amount: number }>(bookings: T[]): number {
+  const active = bookings.filter((b) => countsTowardStats(b));
   if (active.length === 0) return 0;
   const totalNights = active.reduce((s, b) => s + nightsBetween(b.check_in, b.check_out), 0);
   return totalNights / active.length;

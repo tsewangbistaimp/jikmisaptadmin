@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2, Plus, Trash2, Undo2, CheckCircle2, User, DoorClosed, Download } from "lucide-react";
+import { Printer, Building2, Wallet, ShieldCheck, IdCard, ImagePlus, Loader2, Plus, Trash2, Undo2, CheckCircle2, User, DoorClosed, Download, Ban } from "lucide-react";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -695,6 +695,97 @@ export function CheckoutDialog({
           </Button>
           <Button onClick={confirmCheckout} loading={saving}>
             Confirm Checkout
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cancel a booking early (e.g. a guest booked 5 nights but leaves after 2
+// and doesn't want the rest). All server-side validation and totals happen
+// inside cancel_booking(): the room is freed immediately (a 'cancelled'
+// booking no longer blocks the no_overlapping_room_bookings exclusion
+// constraint), and whatever was already paid stays as non-refundable
+// revenue — total_amount is clipped down to advance_paid so the remaining
+// balance is waived, not owed. This does not refund anything; use the
+// separate Refund action for that.
+// ---------------------------------------------------------------------------
+export function CancelBookingDialog({
+  booking,
+  onClose,
+  onDone,
+}: {
+  booking: BookingWithRelations | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setReason("");
+    setError(null);
+  }, [booking]);
+
+  if (!booking) return null;
+
+  const confirmCancel = async () => {
+    setError(null);
+    setSaving(true);
+    const { error: rpcError } = await supabase.rpc("cancel_booking", {
+      p_booking_id: booking.id,
+      p_reason: reason.trim() || null,
+    });
+    setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    toast.success(`${booking.booking_number} cancelled — room is now free for those dates`);
+    onDone();
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!booking} onClose={onClose} title={`Cancel ${booking.booking_number}?`} className="max-w-sm">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          {booking.guest?.full_name} · Room {booking.room?.room_number} · {formatDate(booking.check_in)} – {formatDate(booking.check_out)}
+        </p>
+
+        <div className="space-y-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 text-sm">
+          <p className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+            <span>Already paid (kept as revenue)</span>
+            <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(booking.advance_paid)}</span>
+          </p>
+          {booking.remaining_balance > 0 && (
+            <p className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+              <span>Remaining balance (will be waived)</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(booking.remaining_balance)}</span>
+            </p>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          The room becomes available for these dates immediately. This does not refund anything already paid — the payment is treated as
+          non-refundable and stays in revenue. Use Refund separately if money actually needs to go back.
+        </p>
+
+        <div>
+          <Label>Reason (optional)</Label>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Guest checked out early, staying 2 of 5 nights" />
+        </div>
+
+        <FieldError message={error ?? undefined} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>
+            Back
+          </Button>
+          <Button variant="destructive" onClick={confirmCancel} loading={saving}>
+            <Ban className="h-4 w-4" /> Cancel Booking
           </Button>
         </div>
       </div>

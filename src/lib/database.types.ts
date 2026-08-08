@@ -107,6 +107,14 @@ export interface Booking {
   payment_verified_by: string | null;
   payment_verified_by_name: string | null;
   admin_notes: string | null;
+  /** Set by cancel_booking() when staff cancel a confirmed/checked_in
+   *  booking from the Bookings list (e.g. a guest leaves early). At that
+   *  point total_amount is also clipped down to whatever advance_paid
+   *  already was, so the payment already collected stays as non-refundable
+   *  revenue while remaining_balance becomes 0 - nothing further is owed. */
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancellation_reason: string | null;
 }
 
 /** Return shape of the shared public.calculate_booking_price() RPC — the

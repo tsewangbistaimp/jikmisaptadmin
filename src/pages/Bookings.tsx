@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown, Wallet, Undo2, X } from "lucide-react";
+import { Search, PlusCircle, Eye, Pencil, LogOut, Trash2, Receipt, Download, ArrowUpDown, Wallet, Undo2, X, Ban } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   BookingDetailDialog,
   EditBookingDialog,
   CheckoutDialog,
+  CancelBookingDialog,
   DeleteBookingDialog,
   InvoiceDialog,
   RecordPaymentDialog,
@@ -41,6 +42,7 @@ export default function Bookings() {
   const [viewing, setViewing] = React.useState<BookingWithRelations | null>(null);
   const [editing, setEditing] = React.useState<BookingWithRelations | null>(null);
   const [checkingOut, setCheckingOut] = React.useState<BookingWithRelations | null>(null);
+  const [cancelling, setCancelling] = React.useState<BookingWithRelations | null>(null);
   const [deleting, setDeleting] = React.useState<BookingWithRelations | null>(null);
   const [invoicing, setInvoicing] = React.useState<BookingWithRelations | null>(null);
   const [paying, setPaying] = React.useState<BookingWithRelations | null>(null);
@@ -299,6 +301,11 @@ export default function Bookings() {
                               <LogOut className="h-4 w-4" />
                             </IconButton>
                           )}
+                          {(b.booking_status === "confirmed" || b.booking_status === "checked_in") && (
+                            <IconButton title="Cancel Booking" onClick={() => setCancelling(b)} destructive>
+                              <Ban className="h-4 w-4" />
+                            </IconButton>
+                          )}
                           <IconButton title="Invoice" onClick={() => setInvoicing(b)}>
                             <Receipt className="h-4 w-4" />
                           </IconButton>
@@ -387,6 +394,11 @@ export default function Bookings() {
                         <LogOut className="h-4 w-4" />
                       </IconButton>
                     )}
+                    {(b.booking_status === "confirmed" || b.booking_status === "checked_in") && (
+                      <IconButton title="Cancel Booking" onClick={() => setCancelling(b)} destructive>
+                        <Ban className="h-4 w-4" />
+                      </IconButton>
+                    )}
                     <IconButton title="Invoice" onClick={() => setInvoicing(b)}>
                       <Receipt className="h-4 w-4" />
                     </IconButton>
@@ -439,6 +451,7 @@ export default function Bookings() {
       />
       <EditBookingDialog booking={editing} onClose={() => setEditing(null)} onSaved={load} />
       <CheckoutDialog booking={checkingOut} onClose={() => setCheckingOut(null)} onDone={load} />
+      <CancelBookingDialog booking={cancelling} onClose={() => setCancelling(null)} onDone={load} />
       <DeleteBookingDialog booking={deleting} onClose={() => setDeleting(null)} onDeleted={load} />
       <InvoiceDialog booking={invoicing} onClose={() => setInvoicing(null)} />
       <RecordPaymentDialog booking={paying} onClose={() => setPaying(null)} onDone={load} />
