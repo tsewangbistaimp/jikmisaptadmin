@@ -18,6 +18,7 @@ import {
   BarChart3,
   Globe,
   Calculator,
+  Building2,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,7 +59,10 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   },
   {
     label: "Tools",
-    items: [{ to: "/loan-calculator", label: "Loan Calculator", icon: Calculator }],
+    items: [
+      { to: "/loan-calculator", label: "Loan Calculator", icon: Calculator },
+      { to: "/investment-tools", label: "Investment Tools", icon: Building2 },
+    ],
   },
 ];
 
