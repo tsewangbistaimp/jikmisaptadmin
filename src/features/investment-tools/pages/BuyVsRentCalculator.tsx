@@ -7,6 +7,15 @@ import { BuyVsRentChart } from "../components/charts";
 import { type BuyVsRentInputs, compareBuyVsRent } from "../lib/calculations";
 import { formatNPR, formatNPRShort } from "../lib/format";
 import { cn } from "@/lib/utils";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildBuyVsRentReportContent } from "../reports/content/buyVsRentReport";
+
+const REPORT_PERIOD_OPTIONS = [
+  { value: "5", label: "5 Years" },
+  { value: "10", label: "10 Years" },
+  { value: "20", label: "20 Years" },
+  { value: "custom", label: "Custom" },
+];
 
 const DEFAULT_INPUTS: BuyVsRentInputs = {
   propertyPrice: 15_000_000,
@@ -35,7 +44,17 @@ export default function BuyVsRentCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="Buy vs Rent Calculator" description="Estimate whether buying or renting looks financially stronger, based on your assumptions." />
+      <ToolHeader
+        title="Buy vs Rent Calculator"
+        description="Estimate whether buying or renting looks financially stronger, based on your assumptions."
+        actions={
+          <GenerateReportButton
+            buildContent={(period) => buildBuyVsRentReportContent(inputs, period ? Number(period) : 20)}
+            periodOptions={REPORT_PERIOD_OPTIONS}
+            defaultPeriod="20"
+          />
+        }
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <SectionCard title="If You Buy">

@@ -5,6 +5,8 @@ import { AppreciationLineChart } from "../components/charts";
 import { type AppreciationInputs, calcAppreciation } from "../lib/calculations";
 import { formatNPR, formatNPRShort, formatPercent } from "../lib/format";
 import { cn } from "@/lib/utils";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildAppreciationReportContent } from "../reports/content/appreciationReport";
 
 const PERIOD_OPTIONS = ["1", "5", "10", "15", "20", "custom"] as const;
 type PeriodOption = (typeof PERIOD_OPTIONS)[number];
@@ -25,7 +27,11 @@ export default function AppreciationCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="Property Appreciation Calculator" description="Estimate how much a property could be worth in the future." />
+      <ToolHeader
+        title="Property Appreciation Calculator"
+        description="Estimate how much a property could be worth in the future."
+        actions={<GenerateReportButton buildContent={() => buildAppreciationReportContent(base.currentValue, base.annualAppreciationPct, years)} />}
+      />
 
       <SectionCard title="Inputs">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

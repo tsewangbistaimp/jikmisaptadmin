@@ -3,6 +3,8 @@ import { StatCard } from "@/components/ui/stat-card";
 import { NumberField, ToolHeader, ResultGrid, SectionCard, Callout } from "../components/shared";
 import { type RentalRoiInputs, calcRentalRoi } from "../lib/calculations";
 import { formatNPR, formatNPRShort, formatPercent } from "../lib/format";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildRentalRoiReportContent } from "../reports/content/rentalRoiReport";
 
 const DEFAULT_INPUTS: RentalRoiInputs = {
   propertyPrice: 15_000_000,
@@ -27,7 +29,11 @@ export default function RentalRoiCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="Rental ROI Calculator" description="Estimate how profitable a rental property may be, after every cost." />
+      <ToolHeader
+        title="Rental ROI Calculator"
+        description="Estimate how profitable a rental property may be, after every cost."
+        actions={<GenerateReportButton buildContent={() => buildRentalRoiReportContent(inputs, results)} />}
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <SectionCard title="Property & Loan">

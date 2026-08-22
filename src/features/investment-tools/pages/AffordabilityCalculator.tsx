@@ -3,6 +3,8 @@ import { StatCard } from "@/components/ui/stat-card";
 import { NumberField, ToolHeader, ResultGrid, SectionCard, Callout } from "../components/shared";
 import { type AffordabilityInputs, calcAffordability } from "../lib/calculations";
 import { formatNPR, formatNPRShort, formatPercent } from "../lib/format";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildAffordabilityReportContent } from "../reports/content/affordabilityReport";
 
 const DEFAULT_INPUTS: AffordabilityInputs = {
   monthlyIncome: 150_000,
@@ -22,7 +24,11 @@ export default function AffordabilityCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="Property Affordability Calculator" description="Answers the question: how much property can I likely afford?" />
+      <ToolHeader
+        title="Property Affordability Calculator"
+        description="Answers the question: how much property can I likely afford?"
+        actions={<GenerateReportButton buildContent={() => buildAffordabilityReportContent(inputs, results)} />}
+      />
 
       <SectionCard title="Your Finances">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

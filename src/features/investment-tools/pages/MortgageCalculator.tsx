@@ -4,6 +4,8 @@ import { NumberField, ToolHeader, ResultGrid, SectionCard } from "../components/
 import { PrincipalVsInterestChart } from "../components/charts";
 import { type MortgageInputs, calcMortgage } from "../lib/calculations";
 import { formatNPR, formatNPRShort } from "../lib/format";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildMortgageReportContent } from "../reports/content/mortgageReport";
 
 const DEFAULT_INPUTS: MortgageInputs = {
   propertyPrice: 15_000_000,
@@ -20,7 +22,11 @@ export default function MortgageCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="Mortgage / EMI Calculator" description="See how much you'd need to pay every month for a property loan." />
+      <ToolHeader
+        title="Mortgage / EMI Calculator"
+        description="See how much you'd need to pay every month for a property loan."
+        actions={<GenerateReportButton buildContent={() => buildMortgageReportContent(inputs, results)} />}
+      />
 
       <SectionCard title="Loan Details" description="All figures in NPR — every value below is editable.">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

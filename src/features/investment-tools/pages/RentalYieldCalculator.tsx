@@ -3,6 +3,8 @@ import { StatCard } from "@/components/ui/stat-card";
 import { NumberField, ToolHeader, ResultGrid, SectionCard, Callout } from "../components/shared";
 import { type RentalYieldInputs, calcRentalYield } from "../lib/calculations";
 import { formatNPR, formatPercent } from "../lib/format";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildRentalYieldReportContent } from "../reports/content/rentalYieldReport";
 
 const DEFAULT_INPUTS: RentalYieldInputs = {
   propertyPrice: 15_000_000,
@@ -18,7 +20,11 @@ export default function RentalYieldCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="Rental Yield Calculator" description="How much rental income a property generates compared with its value." />
+      <ToolHeader
+        title="Rental Yield Calculator"
+        description="How much rental income a property generates compared with its value."
+        actions={<GenerateReportButton buildContent={() => buildRentalYieldReportContent(inputs, results)} />}
+      />
 
       <SectionCard title="Inputs">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

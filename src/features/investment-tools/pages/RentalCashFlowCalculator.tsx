@@ -3,6 +3,8 @@ import { StatCard } from "@/components/ui/stat-card";
 import { NumberField, ToolHeader, ResultGrid, SectionCard, StatusPill } from "../components/shared";
 import { type CashFlowInputs, calcRentalCashFlow } from "../lib/calculations";
 import { formatNPR, formatPercent } from "../lib/format";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildCashFlowReportContent } from "../reports/content/cashFlowReport";
 
 const DEFAULT_INPUTS: CashFlowInputs = {
   monthlyRent: 55_000,
@@ -37,7 +39,11 @@ export default function RentalCashFlowCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="Rental Cash Flow Calculator" description="See exactly how much money a rental property generates each month." />
+      <ToolHeader
+        title="Rental Cash Flow Calculator"
+        description="See exactly how much money a rental property generates each month."
+        actions={<GenerateReportButton buildContent={() => buildCashFlowReportContent(inputs, results)} />}
+      />
 
       <SectionCard title="Rent & Monthly Costs">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

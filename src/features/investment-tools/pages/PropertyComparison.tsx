@@ -6,6 +6,8 @@ import { NumberField, SelectField, ToolHeader, Button, Callout } from "../compon
 import { type ComparisonPropertyInput, type PropertyType, compareProperties } from "../lib/calculations";
 import { formatNPR, formatNPRShort, formatPercent } from "../lib/format";
 import { cn } from "@/lib/utils";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildComparisonReportContent } from "../reports/content/comparisonReport";
 
 const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: "apartment", label: "Apartment" },
@@ -87,10 +89,13 @@ export default function PropertyComparison() {
         title="Property Comparison Calculator"
         description="Compare 2–5 properties side by side to see which looks financially stronger, based on your assumptions."
         actions={
-          <Button variant="outline" onClick={addProperty} disabled={properties.length >= 5}>
-            <Plus className="h-4 w-4" />
-            Add Property
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={addProperty} disabled={properties.length >= 5}>
+              <Plus className="h-4 w-4" />
+              Add Property
+            </Button>
+            <GenerateReportButton buildContent={() => buildComparisonReportContent(results)} />
+          </div>
         }
       />
 

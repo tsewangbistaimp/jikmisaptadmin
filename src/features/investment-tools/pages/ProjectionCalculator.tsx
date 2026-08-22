@@ -7,6 +7,15 @@ import { ProjectionValueEquityChart, ProjectionRentalCashFlowChart } from "../co
 import { type ProjectionInputs, buildProjection } from "../lib/calculations";
 import { formatNPR, formatNPRShort } from "../lib/format";
 import { cn } from "@/lib/utils";
+import { GenerateReportButton } from "../reports/GenerateReportButton";
+import { buildProjectionReportContent } from "../reports/content/projectionReport";
+
+const REPORT_PERIOD_OPTIONS = [
+  { value: "5", label: "5 Years" },
+  { value: "10", label: "10 Years" },
+  { value: "20", label: "20 Years" },
+  { value: "custom", label: "Custom" },
+];
 
 const DEFAULT_INPUTS: ProjectionInputs = {
   propertyPrice: 15_000_000,
@@ -31,7 +40,17 @@ export default function ProjectionCalculator() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader title="5 / 10 / 20-Year Property Projection" description="See what could happen to a property investment over time — one of the most detailed tools in this suite." />
+      <ToolHeader
+        title="5 / 10 / 20-Year Property Projection"
+        description="See what could happen to a property investment over time — one of the most detailed tools in this suite."
+        actions={
+          <GenerateReportButton
+            buildContent={(period) => buildProjectionReportContent(inputs, period ? Number(period) : 20)}
+            periodOptions={REPORT_PERIOD_OPTIONS}
+            defaultPeriod="20"
+          />
+        }
+      />
 
       <SectionCard title="Inputs">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
