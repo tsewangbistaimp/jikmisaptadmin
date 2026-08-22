@@ -1,7 +1,8 @@
 import * as React from "react";
-import { Calculator, Building2, Home as HomeIcon } from "lucide-react";
+import { Calculator, Building2, Home as HomeIcon, FileDown } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
@@ -223,6 +224,23 @@ export default function LoanCalculator() {
   const [house, setHouse] = React.useState<PropertyInputs>(DEFAULT_HOUSE);
   const [period, setPeriod] = React.useState<PeriodOption>("5");
   const [customYears, setCustomYears] = React.useState(5);
+  const [generatingPdf, setGeneratingPdf] = React.useState(false);
+
+  // Lazy-loaded so jsPDF/autotable only download when a report is actually
+  // requested — same code-splitting pattern Reports.tsx already uses for its
+  // PDF exports. Passes only the raw calculator inputs; the report module
+  // derives every figure itself via the same calculatePropertyResults
+  // function this page already uses, so the PDF can never show numbers that
+  // disagree with what's on screen.
+  const handleGeneratePdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      const { downloadInvestmentReportPdf } = await import("@/lib/investment-report-pdf");
+      downloadInvestmentReportPdf({ apartment, house });
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   const periodYears = period === "custom" ? Math.max(0, customYears || 0) : Number(period);
 
@@ -248,6 +266,10 @@ export default function LoanCalculator() {
             Compare buying an apartment vs a house with a mortgage — a standalone tool, separate from your booking data.
           </p>
         </div>
+        <Button onClick={handleGeneratePdf} loading={generatingPdf} className="shrink-0">
+          <FileDown className="h-4 w-4" />
+          Generate Professional PDF Report
+        </Button>
       </div>
 
       <Card>
