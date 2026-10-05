@@ -32,6 +32,7 @@ const CATEGORIES: { value: MediaCategory; label: string }[] = [
   { value: "cafe", label: "Cafe" },
   { value: "rooms", label: "Rooms" },
   { value: "video_tour", label: "Video Tour" },
+  { value: "banner", label: "Home Banner (hero)" },
   { value: "other", label: "Other" },
 ];
 
@@ -280,6 +281,11 @@ function MediaForm({
             ))}
           </Select>
         </div>
+        {category === "banner" && (
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            The first enabled banner video (top of the list) plays behind the home-page headline. Use a short, muted-friendly MP4 under 50 MB.
+          </p>
+        )}
         <div>
           <Label>{item ? "Replace file (optional)" : "File"}</Label>
           <input
