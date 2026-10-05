@@ -19,6 +19,7 @@ import {
   Globe,
   Calculator,
   Building2,
+  Images,
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -235,6 +236,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               </p>
             )}
             <SidebarNavLink to="/settings/users" onClick={onNavigate} icon={Settings} label="Settings & Staff" collapsed={collapsed} />
+            <SidebarNavLink to="/media" onClick={onNavigate} icon={Images} label="Media Management" collapsed={collapsed} />
           </div>
         )}
       </nav>

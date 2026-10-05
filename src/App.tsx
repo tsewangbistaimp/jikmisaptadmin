@@ -22,6 +22,7 @@ const Expenses = lazyWithRetry(() => import("@/pages/Expenses"));
 const Reports = lazyWithRetry(() => import("@/pages/Reports"));
 const LoanCalculator = lazyWithRetry(() => import("@/pages/LoanCalculator"));
 const InvestmentTools = lazyWithRetry(() => import("@/features/investment-tools/InvestmentToolsRouter"));
+const MediaManagement = lazyWithRetry(() => import("@/pages/MediaManagement"));
 const UsersSettings = lazyWithRetry(() => import("@/pages/settings/Users"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
@@ -48,6 +49,7 @@ function App() {
 
             <Route element={<AdminRoute />}>
               <Route path="/settings/users" element={<UsersSettings />} />
+              <Route path="/media" element={<MediaManagement />} />
             </Route>
           </Route>
 

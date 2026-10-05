@@ -293,3 +293,19 @@ export interface ExpenseReminder {
 // Kept loose (not table-by-table) so the app compiles without the CLI-generated file.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Database = any;
+
+export type MediaCategory = "gallery" | "cafe" | "rooms" | "video_tour" | "other";
+export interface MediaItem {
+  id: string;
+  title: string;
+  category: MediaCategory;
+  media_type: "image" | "video";
+  file_url: string;
+  storage_path: string;
+  caption: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}

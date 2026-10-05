@@ -77,7 +77,7 @@ export function Topbar() {
       supabase
         .from("bookings")
         .select("id, booking_number, check_in, check_out, booking_status, remaining_balance, guest:guests(full_name), room:rooms(room_number)")
-        .in("booking_status", ["confirmed", "checked_in"])
+        .in("booking_status", ["confirmed", "checked_in", "checked_out"])
         .lte("check_in", horizonISO)
         .gte("check_out", today),
       supabase
@@ -127,9 +127,23 @@ export function Topbar() {
         })
       );
 
+    // Check-out confirmed today — shown after staff complete the checkout
+    // (booking_status becomes "checked_out"). Additive: the check-in and
+    // "checks out today" items above are untouched.
+    rows
+      .filter((b) => b.check_out === today && b.booking_status === "checked_out")
+      .forEach((b) =>
+        items.push({
+          id: `checkout-done-${b.id}`,
+          type: "checkout",
+          title: "Your check-out has been confirmed.",
+          subtitle: `${b.guest?.full_name ?? "Guest"} · ${b.booking_number} · Room ${b.room?.room_number ?? "—"}`,
+        })
+      );
+
     // Outstanding balance with checkout coming up within the lookahead window
     rows
-      .filter((b) => Number(b.remaining_balance) > 0 && b.check_out >= today && b.check_out <= horizonISO)
+      .filter((b) => b.booking_status !== "checked_out" && Number(b.remaining_balance) > 0 && b.check_out >= today && b.check_out <= horizonISO)
       .forEach((b) =>
         items.push({
           id: `payment-${b.id}`,

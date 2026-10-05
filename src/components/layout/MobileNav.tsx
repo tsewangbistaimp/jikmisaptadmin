@@ -20,6 +20,7 @@ import {
   Globe,
   Calculator,
   Building2,
+  Images,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -147,6 +148,7 @@ export function MobileNav() {
               <MoreLink to="/loan-calculator" label="Loan Calculator" icon={Calculator} onClick={() => setMoreOpen(false)} />
               <MoreLink to="/investment-tools" label="Investment Tools" icon={Building2} onClick={() => setMoreOpen(false)} />
               {isAdmin && <MoreLink to="/settings/users" label="Settings & Staff" icon={Settings} onClick={() => setMoreOpen(false)} />}
+              {isAdmin && <MoreLink to="/media" label="Media Management" icon={Images} onClick={() => setMoreOpen(false)} />}
 
               <button
                 onClick={toggleTheme}
