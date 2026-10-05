@@ -35,7 +35,7 @@ import {
   ExpenseTrendChart,
   ExpenseCategoryDonut,
 } from "@/components/dashboard/DashboardWidgets";
-import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
+import { MiniCalendar, type CalendarEvent } from "@/components/dashboard/MiniCalendar";
 import { useChartExport, ChartToolbarButtons, ChartFullscreenDialog } from "@/components/ui/chart-card";
 import { countByDay, countByWeek, countByMonth, sumByDay, sumByMonth, monthOverMonthChange, daysAgoISO } from "@/lib/dashboard-helpers";
 import type { Room } from "@/lib/database.types";
@@ -269,6 +269,10 @@ export default function Dashboard() {
   const checkOutPct = 100 - checkInPct;
   const checkInDates = activeBookings.map((b) => b.check_in);
   const checkOutDates = activeBookings.map((b) => b.check_out);
+  const calendarEvents: CalendarEvent[] = activeBookings.flatMap((b) => [
+    { date: b.check_in, type: "checkin" as const, guestName: b.guest?.full_name ?? "Guest", roomNumber: b.room?.room_number ?? "—" },
+    { date: b.check_out, type: "checkout" as const, guestName: b.guest?.full_name ?? "Guest", roomNumber: b.room?.room_number ?? "—" },
+  ]);
 
   const recentActivity = [
     ...bookings.slice(0, 6).map((b) => ({
@@ -435,7 +439,7 @@ export default function Dashboard() {
       {/* Calendar + today's check-in/out split */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
-          <MiniCalendar highlightDates={checkInDates} checkOutDates={checkOutDates} />
+          <MiniCalendar highlightDates={checkInDates} checkOutDates={checkOutDates} events={calendarEvents} />
         </Card>
         <Card className="flex flex-col justify-center p-5">
           <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Today's Check In / Out</p>
