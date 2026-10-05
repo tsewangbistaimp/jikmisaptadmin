@@ -11,12 +11,13 @@ function toISODate(d: Date) {
 
 /**
  * A lightweight month calendar. `highlightDates` marks days that have a
- * check-in (shown with a small dot); today is shown as a filled circle.
+ * check-in (amber dot) and `checkOutDates` marks days with a check-out (red dot); today is shown as a filled circle.
  */
-export function MiniCalendar({ highlightDates }: { highlightDates: string[] }) {
+export function MiniCalendar({ highlightDates, checkOutDates = [] }: { highlightDates: string[]; checkOutDates?: string[] }) {
   const [cursor, setCursor] = React.useState(() => new Date());
   const todayISO = toISODate(new Date());
   const highlightSet = React.useMemo(() => new Set(highlightDates), [highlightDates]);
+  const checkOutSet = React.useMemo(() => new Set(checkOutDates), [checkOutDates]);
 
   const weeks = React.useMemo(() => {
     const year = cursor.getFullYear();
@@ -73,6 +74,7 @@ export function MiniCalendar({ highlightDates }: { highlightDates: string[] }) {
           const iso = toISODate(date);
           const isToday = iso === todayISO;
           const hasCheckIn = highlightSet.has(iso);
+          const hasCheckOut = checkOutSet.has(iso);
           return (
             <div key={i} className="flex items-center justify-center py-1">
               <span
@@ -86,6 +88,9 @@ export function MiniCalendar({ highlightDates }: { highlightDates: string[] }) {
                 {date.getDate()}
                 {hasCheckIn && !isToday && (
                   <span className="absolute -top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" />
+                )}
+                {hasCheckOut && (
+                  <span className="absolute -top-0.5 left-0.5 h-1.5 w-1.5 rounded-full bg-red-500" title="Guest checking out" />
                 )}
               </span>
             </div>

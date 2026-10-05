@@ -268,6 +268,7 @@ export default function Dashboard() {
   const checkInPct = checkInOutTotal > 0 ? Math.round((checkInsToday / checkInOutTotal) * 100) : 0;
   const checkOutPct = 100 - checkInPct;
   const checkInDates = activeBookings.map((b) => b.check_in);
+  const checkOutDates = activeBookings.map((b) => b.check_out);
 
   const recentActivity = [
     ...bookings.slice(0, 6).map((b) => ({
@@ -434,7 +435,7 @@ export default function Dashboard() {
       {/* Calendar + today's check-in/out split */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
-          <MiniCalendar highlightDates={checkInDates} />
+          <MiniCalendar highlightDates={checkInDates} checkOutDates={checkOutDates} />
         </Card>
         <Card className="flex flex-col justify-center p-5">
           <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Today's Check In / Out</p>
