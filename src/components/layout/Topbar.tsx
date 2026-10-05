@@ -115,9 +115,9 @@ export function Topbar() {
         })
       );
 
-    // Departing today (only actually-in-house bookings, i.e. checked_in)
+    // Departing today (in-house guests: checked_in, or confirmed — no separate check-in step is recorded)
     rows
-      .filter((b) => b.check_out === today && b.booking_status === "checked_in")
+      .filter((b) => b.check_out === today && (b.booking_status === "checked_in" || b.booking_status === "confirmed"))
       .forEach((b) =>
         items.push({
           id: `checkout-${b.id}`,
